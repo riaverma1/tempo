@@ -1,6 +1,7 @@
 import { execFile } from 'child_process';
 import { promisify } from 'util';
 import path from 'path';
+import fs from 'fs';
 import fetch from 'node-fetch';
 
 const execFileAsync = promisify(execFile);
@@ -35,7 +36,6 @@ export async function downloadWithCobalt(url: string, outputDir: string): Promis
   const fileRes = await fetch(data.url);
   if (!fileRes.ok) throw new Error('Failed to download from Cobalt URL');
 
-  const fs = await import('fs');
   const outPath = path.join(outputDir, 'video.mp4');
   const dest = fs.createWriteStream(outPath);
   await new Promise<void>((resolve, reject) => {
@@ -50,15 +50,20 @@ export async function downloadVideo(url: string, outputDir: string): Promise<{ p
   try {
     const p = await downloadWithYtDlp(url, outputDir);
     return { path: p, method: 'yt-dlp' };
-  } catch {
-    // yt-dlp failed — try Cobalt
+  } catch (err) {
+    // Surface auth/private errors immediately — no point trying Cobalt
+    const msg = err instanceof Error ? err.message : String(err);
+    if (/private video|sign in|login required|not available/i.test(msg)) {
+      throw new Error('This video is private or requires login. Download it and upload from your camera roll.');
+    }
+    console.error('[download] yt-dlp failed, trying Cobalt:', msg);
   }
 
   try {
     const p = await downloadWithCobalt(url, outputDir);
     return { path: p, method: 'cobalt' };
-  } catch {
-    // Both failed
+  } catch (err) {
+    console.error('[download] Cobalt also failed:', err instanceof Error ? err.message : err);
   }
 
   return null;

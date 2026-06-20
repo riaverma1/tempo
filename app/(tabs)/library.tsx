@@ -56,6 +56,7 @@ export default function Library() {
             <WorkoutCard
               workout={item}
               onPress={() => router.push(`/workout/${item.id}`)}
+              onEdit={() => router.push(`/workout/review/${item.id}`)}
               onRemove={async () => {
                 setWorkouts((prev) => prev.filter((w) => w.id !== item.id));
                 await supabase.from('workout_movements').delete().eq('workout_id', item.id);

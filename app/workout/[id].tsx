@@ -40,7 +40,9 @@ export default function WorkoutScreen() {
           <Text style={styles.close}>✕</Text>
         </TouchableOpacity>
         <Text style={styles.navTitle} numberOfLines={1}>{workout.title}</Text>
-        <View style={{ width: 28 }} />
+        <TouchableOpacity onPress={() => router.push(`/workout/review/${id}`)}>
+          <Text style={styles.editBtn}>Edit</Text>
+        </TouchableOpacity>
       </View>
 
       {!started ? (
@@ -88,6 +90,12 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     fontSize: 18,
     width: 28,
+  },
+  editBtn: {
+    color: Colors.textSecondary,
+    fontSize: 15,
+    width: 28,
+    textAlign: 'right',
   },
   navTitle: {
     flex: 1,

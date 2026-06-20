@@ -6,10 +6,11 @@ import { Workout } from '@/types';
 interface Props {
   workout: Workout;
   onPress: () => void;
+  onEdit?: () => void;
   onRemove?: () => void;
 }
 
-export function WorkoutCard({ workout, onPress, onRemove }: Props) {
+export function WorkoutCard({ workout, onPress, onEdit, onRemove }: Props) {
   const movementCount = workout.movements?.length ?? 0;
   const thumb = workout.source_video?.thumbnail_url;
   const date = new Date(workout.created_at).toLocaleDateString('en-US', {
@@ -30,11 +31,18 @@ export function WorkoutCard({ workout, onPress, onRemove }: Props) {
         <Text style={styles.title} numberOfLines={2}>{workout.title}</Text>
         <Text style={styles.meta}>{movementCount} movements · {date}</Text>
       </View>
-      {onRemove && (
-        <TouchableOpacity onPress={onRemove} style={styles.removeBtn} hitSlop={8}>
-          <Text style={styles.removeIcon}>✕</Text>
-        </TouchableOpacity>
-      )}
+      <View style={styles.actions}>
+        {onEdit && (
+          <TouchableOpacity onPress={onEdit} style={styles.actionBtn} hitSlop={8}>
+            <Text style={styles.editIcon}>✎</Text>
+          </TouchableOpacity>
+        )}
+        {onRemove && (
+          <TouchableOpacity onPress={onRemove} style={styles.actionBtn} hitSlop={8}>
+            <Text style={styles.removeIcon}>✕</Text>
+          </TouchableOpacity>
+        )}
+      </View>
     </TouchableOpacity>
   );
 }
@@ -74,11 +82,20 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: Colors.textSecondary,
   },
-  removeBtn: {
-    padding: 8,
+  actions: {
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: 4,
+  },
+  actionBtn: {
+    padding: 6,
+  },
+  editIcon: {
+    color: Colors.textSecondary,
+    fontSize: 16,
   },
   removeIcon: {
     color: Colors.textMuted,
-    fontSize: 14,
+    fontSize: 13,
   },
 });

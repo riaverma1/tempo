@@ -4,6 +4,7 @@ import path from 'path';
 import fs from 'fs/promises';
 import { db } from '../db/client';
 import { processJob } from '../jobs/processJob';
+import { detectPlatform } from '../pipeline/chapters';
 
 const MAX_FILE_SIZE = 200 * 1024 * 1024; // 200MB
 
@@ -31,7 +32,7 @@ export async function processVideoRoute(app: FastifyInstance) {
 
     let url: string | undefined;
     let filePath: string | undefined;
-    let platform: 'youtube' | 'tiktok' | 'uploaded' = 'youtube';
+    let platform: 'youtube' | 'tiktok' | 'instagram' | 'uploaded' = 'youtube';
 
     const contentType = request.headers['content-type'] ?? '';
 
@@ -44,12 +45,12 @@ export async function processVideoRoute(app: FastifyInstance) {
       const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'tempo-upload-'));
       filePath = path.join(tmpDir, 'video.mp4');
       await fs.writeFile(filePath, await data.toBuffer());
-      platform = 'tiktok';
+      platform = 'uploaded';
     } else {
       const body = request.body as { url?: string };
       url = body.url;
       if (!url) return reply.status(400).send({ error: 'url is required' });
-      platform = url.includes('youtube') || url.includes('youtu.be') ? 'youtube' : 'uploaded';
+      platform = detectPlatform(url);
     }
 
     // Create job row

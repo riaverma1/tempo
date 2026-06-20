@@ -1,7 +1,15 @@
 import fetch from 'node-fetch';
 import fs from 'fs';
 import FormData from 'form-data';
-import { ParsedSegment } from './parser';
+export interface ParsedSegment {
+  name: string;
+  mode: 'timed' | 'reps';
+  start_sec: number;
+  end_sec: number;
+  duration_sec: number | null;
+  reps: number | null;
+  sets: number | null;
+}
 
 const BASE = 'https://api.twelvelabs.io/v1.3';
 

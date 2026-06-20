@@ -3,8 +3,8 @@ import path from 'path';
 import fs from 'fs/promises';
 import { db } from '../db/client';
 import { downloadVideo } from '../pipeline/download';
-import { getVideoTitle, getYoutubeThumbnailUrl } from '../pipeline/chapters';
-import { ParsedSegment } from '../pipeline/parser';
+import { getVideoTitle, getVideoThumbnailUrl } from '../pipeline/chapters';
+import { ParsedSegment } from '../pipeline/twelvelabs';
 import { analyzeWithTwelveLabs } from '../pipeline/twelvelabs';
 import { cutClips, ClipSpec } from '../pipeline/ffmpeg';
 import { uploadClip } from '../pipeline/upload';
@@ -28,7 +28,7 @@ export async function processJob(params: {
   userId: string;
   url?: string;
   filePath?: string;
-  platform: 'youtube' | 'tiktok' | 'uploaded';
+  platform: 'youtube' | 'tiktok' | 'instagram' | 'uploaded';
 }) {
   const { jobId, userId, url, filePath, platform } = params;
   const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'tempo-'));
@@ -104,7 +104,8 @@ export async function processJob(params: {
         videoPath = result.path;
         log(jobId, `download complete via ${result.method}`);
       } else {
-        log(jobId, 'download failed — both yt-dlp and Cobalt failed, falling through to Twelve Labs URL path');
+        log(jobId, 'download failed — both yt-dlp and Cobalt failed');
+        throw new Error('Could not download this video. Try saving it to your camera roll and uploading it directly.');
       }
     }
 
@@ -116,7 +117,7 @@ export async function processJob(params: {
     // 4. Twelve Labs analysis
     await updateJob(jobId, { status: 'analyzing' });
     const detectionMethod = 'twelve_labs';
-    if (!videoPath) throw new Error('No video available to analyze');
+    if (!videoPath) throw new Error('Video could not be downloaded. Try uploading the file directly.');
     const segments: ParsedSegment[] = await analyzeWithTwelveLabs({ type: 'file', path: videoPath });
 
     log(jobId, `${segments.length} segments via ${detectionMethod}`);
@@ -138,7 +139,7 @@ export async function processJob(params: {
     const title = videoTitle ?? 'Workout';
     const sourceVideoId = crypto.randomUUID();
 
-    const movementRows: object[] = [];
+    const movementRows: Array<{ id: string; source_video_id: string; position: number; name: string; mode: string; start_sec: number; end_sec: number; duration_sec: number | null; reps: number | null; sets: number | null; clip_url: string; thumbnail_url: string | null; detection_method: string; confidence: number }> = [];
     let firstThumbUrl: string | null = null;
     for (let i = 0; i < segments.length; i++) {
       const seg = segments[i];
@@ -167,7 +168,7 @@ export async function processJob(params: {
       });
     }
 
-    const sourceThumbUrl = (url ? getYoutubeThumbnailUrl(url) : null) ?? firstThumbUrl;
+    const sourceThumbUrl = (url ? getVideoThumbnailUrl(url) : null) ?? firstThumbUrl;
     const { error: svErr } = await db.from('source_videos').upsert({
       id: sourceVideoId,
       user_id: userId,

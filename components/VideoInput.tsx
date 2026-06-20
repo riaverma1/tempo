@@ -43,7 +43,7 @@ export function VideoInput({ onSubmitUrl, onSubmitFile, loading }: Props) {
           style={styles.input}
           value={url}
           onChangeText={setUrl}
-          placeholder="Paste YouTube URL"
+          placeholder="Paste YouTube, TikTok, or Instagram URL"
           placeholderTextColor={Colors.textMuted}
           autoCapitalize="none"
           autoCorrect={false}
@@ -72,7 +72,7 @@ export function VideoInput({ onSubmitUrl, onSubmitFile, loading }: Props) {
       </View>
 
       <TouchableOpacity style={styles.fileBtn} onPress={handlePickFile} disabled={loading}>
-        <Text style={styles.fileBtnText}>Import TikTok from Camera Roll</Text>
+        <Text style={styles.fileBtnText}>Import video from Camera Roll</Text>
       </TouchableOpacity>
     </View>
   );

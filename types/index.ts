@@ -1,15 +1,14 @@
-export type Platform = 'youtube' | 'tiktok' | 'uploaded';
+export type Platform = 'youtube' | 'tiktok' | 'instagram' | 'uploaded';
 
 export type ProcessingStatus =
   | 'pending'
   | 'downloading'
-  | 'checking_chapters'
-  | 'running_ocr'
   | 'analyzing'
   | 'cutting_clips'
   | 'uploading'
   | 'complete'
   | 'failed';
+
 
 export type MovementMode = 'timed' | 'reps';
 

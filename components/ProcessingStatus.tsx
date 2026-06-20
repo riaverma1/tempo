@@ -5,8 +5,6 @@ import { ProcessingJob, ProcessingStatus as Status } from '@/types';
 
 const STEPS: { status: Status; label: string }[] = [
   { status: 'downloading', label: 'Downloading video' },
-  { status: 'checking_chapters', label: 'Checking chapter markers' },
-  { status: 'running_ocr', label: 'Reading text overlays' },
   { status: 'analyzing', label: 'Analyzing with AI' },
   { status: 'cutting_clips', label: 'Cutting clips' },
   { status: 'uploading', label: 'Uploading' },

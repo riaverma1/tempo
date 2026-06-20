@@ -24,7 +24,7 @@ interface ReviewMovement extends WorkoutMovement {
 }
 
 interface EditTarget {
-  type: 'title' | 'movement-name' | 'movement-duration';
+  type: 'title' | 'movement-name' | 'movement-duration' | 'all-durations';
   key: string;
   movementId?: string;
   current: string;
@@ -93,6 +93,11 @@ export default function ReviewScreen() {
             ? { ...m, movement: { ...m.movement, duration_sec: secs } }
             : m
         )
+      );
+    } else if (editTarget.type === 'all-durations') {
+      const secs = Math.max(1, parseInt(val, 10) || 0);
+      setMovements((prev) =>
+        prev.map((m) => ({ ...m, movement: { ...m.movement, duration_sec: secs } }))
       );
     }
     setEditTarget(null);
@@ -273,7 +278,12 @@ export default function ReviewScreen() {
           <Text style={styles.editHint}>tap to rename</Text>
         </TouchableOpacity>
 
-        <Text style={styles.sectionLabel}>{movements.length} movements · hold ⠿ to reorder</Text>
+        <View style={styles.sectionRow}>
+          <Text style={styles.sectionLabel}>{movements.length} movements · hold ⠿ to reorder</Text>
+          <TouchableOpacity onPress={() => openEdit({ type: 'all-durations', key: 'all', current: '' })}>
+            <Text style={styles.setAllBtn}>Set all durations</Text>
+          </TouchableOpacity>
+        </View>
 
         <DraggableFlatList
           data={movements}
@@ -301,13 +311,15 @@ export default function ReviewScreen() {
                   ? 'Workout name'
                   : editTarget?.type === 'movement-name'
                   ? 'Movement name'
+                  : editTarget?.type === 'all-durations'
+                  ? 'Set all durations (seconds)'
                   : 'Duration (seconds)'}
               </Text>
               <TextInput
                 style={styles.modalInput}
                 value={editValue}
                 onChangeText={setEditValue}
-                keyboardType={editTarget?.type === 'movement-duration' ? 'number-pad' : 'default'}
+                keyboardType={editTarget?.type === 'movement-duration' || editTarget?.type === 'all-durations' ? 'number-pad' : 'default'}
                 autoFocus
                 selectTextOnFocus
                 returnKeyType="done"
@@ -358,14 +370,24 @@ const styles = StyleSheet.create({
   workoutTitle: { color: Colors.text, fontSize: 22, fontWeight: '700', flex: 1 },
   editHint: { color: Colors.textMuted, fontSize: 12 },
 
+  sectionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingBottom: 10,
+  },
   sectionLabel: {
     color: Colors.textSecondary,
     fontSize: 12,
     fontWeight: '600',
     letterSpacing: 0.8,
     textTransform: 'uppercase',
-    paddingHorizontal: 20,
-    paddingBottom: 10,
+  },
+  setAllBtn: {
+    color: Colors.accent,
+    fontSize: 13,
+    fontWeight: '600',
   },
 
   list: { paddingHorizontal: 16, gap: 8, paddingBottom: 40 },
