@@ -1,0 +1,42 @@
+{
+  "expo": {
+    "name": "Tempo",
+    "slug": "tempo",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "scheme": "tempo",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#090D1B"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.riaverma.tempo"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#090D1B"
+      },
+      "package": "com.riaverma.tempo"
+    },
+    "web": {
+      "bundler": "metro"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-video",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow Tempo to access your photos to import workout videos."
+        }
+      ],
+      "expo-asset"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
