@@ -42,6 +42,38 @@ npx expo start     # Expo Go via QR code (no native auth/camera)
 
 ---
 
+## Running on your personal device (no App Store)
+
+Installs directly to your iPhone via Xcode. No TestFlight, no paid developer account needed.
+
+**First time:**
+1. Install Xcode from the Mac App Store
+2. Xcode → Settings → Accounts → add your Apple ID
+3. Connect iPhone via USB, trust the computer on the phone when prompted
+4. Run:
+   ```bash
+   npm install
+   npx expo run:ios --device
+   ```
+5. If Xcode throws a signing error: open `ios/tempo.xcworkspace` in Xcode → click the project in the sidebar → Signing & Capabilities → set Team to your personal Apple ID and check "Automatically manage signing". Then re-run step 4.
+
+**To update after making app code changes:**
+```bash
+npx expo run:ios --device
+```
+Phone needs to be plugged in. Takes about a minute once the initial build exists.
+
+**What requires a device sync vs. what doesn't:**
+
+| Change | What to do |
+|---|---|
+| `server/` changes | Deploy to Railway — phone picks it up automatically |
+| `app/`, `components/`, `hooks/`, `lib/`, `types/` | Plug in and run `npx expo run:ios --device` |
+
+> Free Apple ID profiles expire every 7 days. When the app stops launching, just plug in and re-run `npx expo run:ios --device`.
+
+---
+
 ## How a video becomes a workout
 
 ### Phase 1 — Capture
