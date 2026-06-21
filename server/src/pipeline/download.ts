@@ -1,17 +1,22 @@
 import { execFile } from 'child_process';
 import { promisify } from 'util';
 import path from 'path';
+import fs from 'fs/promises';
+import { COOKIES_PATH } from '../index';
 
 const execFileAsync = promisify(execFile);
 
 export async function downloadVideo(url: string, outputDir: string): Promise<{ path: string } | null> {
   const outputTemplate = path.join(outputDir, 'video.%(ext)s');
+  const cookiesExist = await fs.access(COOKIES_PATH).then(() => true).catch(() => false);
+  const cookiesArgs = cookiesExist ? ['--cookies', COOKIES_PATH] : [];
   try {
     await execFileAsync('yt-dlp', [
       '--no-playlist',
       '--format', 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',
       '--merge-output-format', 'mp4',
       '-o', outputTemplate,
+      ...cookiesArgs,
       url,
     ]);
     return { path: path.join(outputDir, 'video.mp4') };

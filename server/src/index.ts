@@ -1,11 +1,22 @@
 import 'dotenv/config';
+import fs from 'fs/promises';
 import Fastify from 'fastify';
 import multipart from '@fastify/multipart';
 import cors from '@fastify/cors';
 import { healthRoute } from './routes/health';
 import { processVideoRoute } from './routes/processVideo';
 
+export const COOKIES_PATH = '/tmp/youtube_cookies.txt';
+
+async function writeCookies() {
+  const b64 = process.env.YOUTUBE_COOKIES_B64;
+  if (!b64) return;
+  await fs.writeFile(COOKIES_PATH, Buffer.from(b64, 'base64'));
+  console.log('[startup] YouTube cookies written to', COOKIES_PATH);
+}
+
 async function main() {
+  await writeCookies();
   const app = Fastify({ logger: true });
 
   await app.register(cors, { origin: true });
