@@ -27,6 +27,7 @@ async function transcodeToH264(videoPath: string, outputDir: string): Promise<st
   console.log('[ffmpeg] pre-transcoding to h264...');
   await execFileAsync('ffmpeg', [
     '-i', videoPath,
+    '-vf', 'scale=-2:960',
     '-c:v', 'libx264', '-preset', 'ultrafast',
     '-c:a', 'aac',
     '-y',
