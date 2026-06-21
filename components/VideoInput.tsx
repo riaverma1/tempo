@@ -60,7 +60,7 @@ export function VideoInput({ onSubmitUrl, onSubmitFile, loading }: Props) {
           {loading ? (
             <ActivityIndicator color={Colors.background} size="small" />
           ) : (
-            <Text style={styles.goBtnText}>Go</Text>
+            <Text style={styles.goBtnText}>→</Text>
           )}
         </TouchableOpacity>
       </View>
@@ -83,24 +83,26 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   urlRow: {
-    flexDirection: 'row',
-    gap: 10,
+    position: 'relative',
   },
   input: {
-    flex: 1,
     height: 52,
     backgroundColor: Colors.surface,
     borderWidth: 1.5,
     borderColor: Colors.border,
     borderRadius: 14,
     paddingHorizontal: 16,
+    paddingRight: 56,
     color: Colors.text,
     fontSize: 15,
   },
   goBtn: {
-    width: 64,
-    height: 52,
-    borderRadius: 14,
+    position: 'absolute',
+    right: 6,
+    top: 6,
+    width: 40,
+    height: 40,
+    borderRadius: 10,
     backgroundColor: Colors.accent,
     alignItems: 'center',
     justifyContent: 'center',

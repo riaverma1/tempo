@@ -113,7 +113,11 @@ export function FocusModePlayer({ movements, onFinish }: Props) {
       </View>
 
       {/* Video clip */}
-      <View style={[styles.videoContainer, { width, height: width * 0.75 }]}>
+      <TouchableOpacity
+        activeOpacity={1}
+        onPress={() => setPaused((v) => !v)}
+        style={[styles.videoContainer, { width, height: width * 0.75 }]}
+      >
         {m.clip_url ? (
           <VideoView
             player={player}
@@ -126,7 +130,12 @@ export function FocusModePlayer({ movements, onFinish }: Props) {
             <Text style={styles.placeholderText}>No clip</Text>
           </View>
         )}
-      </View>
+        {paused && (
+          <View style={styles.pauseOverlay}>
+            <Text style={styles.pauseIcon}>▶</Text>
+          </View>
+        )}
+      </TouchableOpacity>
 
       {/* Timer or reps */}
       <View style={styles.displayContainer}>
@@ -206,6 +215,16 @@ const styles = StyleSheet.create({
   placeholderText: {
     color: Colors.textMuted,
     fontSize: 14,
+  },
+  pauseOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pauseIcon: {
+    color: '#fff',
+    fontSize: 40,
   },
   displayContainer: {
     paddingVertical: 28,

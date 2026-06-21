@@ -258,14 +258,12 @@ export default function ReviewScreen() {
       <SafeAreaView style={styles.safe}>
         {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={saveToLibrary} disabled={saving}>
-            <Text style={styles.saveLibBtn}>{saving ? '…' : 'Save'}</Text>
+          <TouchableOpacity onPress={() => router.back()}>
+            <Text style={styles.cancelBtn}>Cancel</Text>
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Review Workout</Text>
-          <TouchableOpacity onPress={save} disabled={saving}>
-            <Text style={[styles.saveBtn, saving && styles.saveBtnDim]}>
-              {saving ? 'Saving…' : 'Start'}
-            </Text>
+          <Text style={styles.headerTitle}>Edit Workout</Text>
+          <TouchableOpacity onPress={saveToLibrary} disabled={saving}>
+            <Text style={[styles.saveBtn, saving && styles.saveBtnDim]}>{saving ? '…' : 'Save'}</Text>
           </TouchableOpacity>
         </View>
 
@@ -292,9 +290,19 @@ export default function ReviewScreen() {
           renderItem={renderItem}
           contentContainerStyle={styles.list}
           ListFooterComponent={
-            <TouchableOpacity style={styles.deleteWorkoutBtn} onPress={deleteWorkout}>
-              <Text style={styles.deleteWorkoutText}>Delete Workout</Text>
-            </TouchableOpacity>
+            <View>
+              <View style={styles.footerBtns}>
+                <TouchableOpacity style={styles.footerBtnSecondary} onPress={saveToLibrary} disabled={saving}>
+                  <Text style={styles.footerBtnSecondaryText}>{saving ? 'Saving…' : 'Save'}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.footerBtnPrimary} onPress={save} disabled={saving}>
+                  <Text style={styles.footerBtnPrimaryText}>{saving ? 'Saving…' : 'Start'}</Text>
+                </TouchableOpacity>
+              </View>
+              <TouchableOpacity style={styles.deleteWorkoutBtn} onPress={deleteWorkout}>
+                <Text style={styles.deleteWorkoutText}>Delete Workout</Text>
+              </TouchableOpacity>
+            </View>
           }
         />
 
@@ -355,10 +363,23 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
   },
-  saveLibBtn: { color: Colors.textSecondary, fontSize: 15 },
+  cancelBtn: { color: Colors.textSecondary, fontSize: 15 },
+  deleteWorkoutBtn: { marginTop: 12, paddingVertical: 14, alignItems: 'center' as const },
+  deleteWorkoutText: { color: Colors.error, fontSize: 14, fontWeight: '600' as const },
   headerTitle: { color: Colors.text, fontSize: 15, fontWeight: '600' },
   saveBtn: { color: Colors.accent, fontSize: 15, fontWeight: '700' },
   saveBtnDim: { opacity: 0.5 },
+  footerBtns: { flexDirection: 'row', gap: 10, marginTop: 24, paddingBottom: 8 },
+  footerBtnPrimary: {
+    flex: 1, height: 52, borderRadius: 14, backgroundColor: Colors.accent,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  footerBtnPrimaryText: { color: '#000', fontSize: 16, fontWeight: '800' },
+  footerBtnSecondary: {
+    flex: 1, height: 52, borderRadius: 14, borderWidth: 1.5, borderColor: Colors.border,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  footerBtnSecondaryText: { color: Colors.text, fontSize: 16, fontWeight: '600' },
 
   titleRow: {
     paddingHorizontal: 20,
@@ -420,15 +441,6 @@ const styles = StyleSheet.create({
   actionIcon: { color: Colors.textSecondary, fontSize: 15 },
   deleteIcon: { color: Colors.error },
   dragHandle: { color: Colors.textMuted, fontSize: 18 },
-  deleteWorkoutBtn: {
-    marginTop: 24,
-    paddingVertical: 14,
-    alignItems: 'center',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: Colors.error,
-  },
-  deleteWorkoutText: { color: Colors.error, fontSize: 15, fontWeight: '600' },
 
   modalOverlay: {
     flex: 1,
