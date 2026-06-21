@@ -1,4 +1,6 @@
 import fs from 'fs';
+import FormData from 'form-data';
+import fetch from 'node-fetch';
 export interface ParsedSegment {
   name: string;
   mode: 'timed' | 'reps';
@@ -40,15 +42,13 @@ async function getOrCreateIndex(): Promise<string> {
 
 async function uploadFile(indexId: string, videoPath: string): Promise<string> {
   const apiKey = process.env.TWELVE_LABS_API_KEY!;
-  const fileBuffer = await fs.promises.readFile(videoPath);
-  const blob = new Blob([fileBuffer], { type: 'video/mp4' });
   const form = new FormData();
   form.append('index_id', indexId);
-  form.append('video_file', blob, 'video.mp4');
+  form.append('video_file', fs.createReadStream(videoPath), { filename: 'video.mp4', contentType: 'video/mp4' });
 
   const res = await fetch(`${BASE}/tasks`, {
     method: 'POST',
-    headers: { 'x-api-key': apiKey },
+    headers: { 'x-api-key': apiKey, ...form.getHeaders() },
     body: form,
   });
   if (!res.ok) {
