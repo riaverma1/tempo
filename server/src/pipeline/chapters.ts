@@ -1,6 +1,5 @@
 import { execFile } from 'child_process';
 import { promisify } from 'util';
-import fetch from 'node-fetch';
 
 const execFileAsync = promisify(execFile);
 
