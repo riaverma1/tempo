@@ -1,3 +1,15 @@
+# Build stage: install all deps (including devDependencies) and compile TypeScript
+FROM node:20-slim AS builder
+
+WORKDIR /app
+COPY server/package*.json ./
+RUN npm ci
+
+COPY server/tsconfig.json ./
+COPY server/src ./src
+RUN npx tsc
+
+# Production stage: lean image with only runtime deps and compiled output
 FROM node:20-slim
 
 RUN apt-get update && apt-get install -y \
@@ -12,8 +24,6 @@ WORKDIR /app
 COPY server/package*.json ./
 RUN npm ci --omit=dev
 
-COPY server/tsconfig.json ./
-COPY server/src ./src
-RUN npx tsc
+COPY --from=builder /app/dist ./dist
 
 CMD ["node", "dist/index.js"]
