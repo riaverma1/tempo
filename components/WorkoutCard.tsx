@@ -10,6 +10,12 @@ interface Props {
   onRemove?: () => void;
 }
 
+function formatDuration(totalSec: number): string {
+  const m = Math.floor(totalSec / 60);
+  const s = totalSec % 60;
+  return m > 0 ? `${m}m ${s}s` : `${s}s`;
+}
+
 export function WorkoutCard({ workout, onPress, onEdit, onRemove }: Props) {
   const movementCount = workout.movements?.length ?? 0;
   const thumb = workout.source_video?.thumbnail_url;
@@ -17,6 +23,11 @@ export function WorkoutCard({ workout, onPress, onEdit, onRemove }: Props) {
     month: 'short',
     day: 'numeric',
   });
+  const totalSec = workout.movements?.reduce((sum, wm) => {
+    const dur = (wm as any).movement?.duration_sec ?? 0;
+    return sum + dur;
+  }, 0) ?? 0;
+  const durationStr = totalSec > 0 ? formatDuration(totalSec) : null;
 
   return (
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.75}>
@@ -29,7 +40,7 @@ export function WorkoutCard({ workout, onPress, onEdit, onRemove }: Props) {
       </View>
       <View style={styles.info}>
         <Text style={styles.title} numberOfLines={2}>{workout.title}</Text>
-        <Text style={styles.meta}>{movementCount} movements · {date}</Text>
+        <Text style={styles.meta}>{movementCount} movements{durationStr ? ` · ${durationStr}` : ''} · {date}</Text>
       </View>
       <View style={styles.actions}>
         {onEdit && (

@@ -1,4 +1,4 @@
-export type Platform = 'youtube' | 'tiktok' | 'instagram' | 'uploaded';
+export type Platform = 'youtube' | 'tiktok' | 'instagram' | 'facebook' | 'uploaded';
 
 export type ProcessingStatus =
   | 'pending'

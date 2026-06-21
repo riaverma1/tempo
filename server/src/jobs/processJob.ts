@@ -28,7 +28,7 @@ export async function processJob(params: {
   userId: string;
   url?: string;
   filePath?: string;
-  platform: 'youtube' | 'tiktok' | 'instagram' | 'uploaded';
+  platform: 'youtube' | 'tiktok' | 'instagram' | 'facebook' | 'uploaded';
 }) {
   const { jobId, userId, url, filePath, platform } = params;
   const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'tempo-'));

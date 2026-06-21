@@ -25,7 +25,7 @@ export default function Library() {
 
     const { data } = await supabase
       .from('workouts')
-      .select('*, source_video:source_videos(*), movements:workout_movements(id)')
+      .select('*, source_video:source_videos(*), movements:workout_movements(id, movement:movements(duration_sec))')
       .eq('user_id', userId)
       .order('created_at', { ascending: false });
 

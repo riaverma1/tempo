@@ -3,10 +3,11 @@ import { promisify } from 'util';
 
 const execFileAsync = promisify(execFile);
 
-export function detectPlatform(url: string): 'youtube' | 'tiktok' | 'instagram' | 'uploaded' {
+export function detectPlatform(url: string): 'youtube' | 'tiktok' | 'instagram' | 'facebook' | 'uploaded' {
   if (/youtube\.com|youtu\.be/.test(url)) return 'youtube';
   if (/tiktok\.com|vm\.tiktok\.com/.test(url)) return 'tiktok';
   if (/instagram\.com\/reel/.test(url)) return 'instagram';
+  if (/facebook\.com|fb\.watch/.test(url)) return 'facebook';
   return 'uploaded';
 }
 

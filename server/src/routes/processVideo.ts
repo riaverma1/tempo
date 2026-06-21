@@ -32,7 +32,7 @@ export async function processVideoRoute(app: FastifyInstance) {
 
     let url: string | undefined;
     let filePath: string | undefined;
-    let platform: 'youtube' | 'tiktok' | 'instagram' | 'uploaded' = 'youtube';
+    let platform: 'youtube' | 'tiktok' | 'instagram' | 'facebook' | 'uploaded' = 'youtube';
 
     const contentType = request.headers['content-type'] ?? '';
 
