@@ -1,0 +1,19 @@
+# Expo app files — not needed for server Docker build
+app/
+android/
+ios/
+assets/
+components/
+constants/
+hooks/
+lib/
+mocks/
+supabase/
+types/
+node_modules/
+.expo/
+.env
+*.log
+.DS_Store
+
+# Keep server/ and railway.toml — everything else is Expo-only

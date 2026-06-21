@@ -33,11 +33,7 @@
           "photosPermission": "Allow Tempo to access your photos to import workout videos."
         }
       ],
-      "expo-asset",
-      "expo-font",
-      "expo-splash-screen",
-      "expo-status-bar",
-      "expo-web-browser"
+      "expo-asset"
     ],
     "experiments": {
       "typedRoutes": true

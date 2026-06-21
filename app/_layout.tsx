@@ -16,7 +16,8 @@ function useProtectedRoute(session: Session | null, loading: boolean) {
   const router = useRouter();
 
   useEffect(() => {
-    if (BYPASS_AUTH || loading) return;
+    if (loading) return;
+    if (BYPASS_AUTH) return;
     const inAuth = segments[0] === '(auth)';
     if (!session && !inAuth) {
       router.replace('/(auth)/sign-in');
@@ -31,6 +32,11 @@ export default function RootLayout() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (BYPASS_AUTH) {
+      setLoading(false);
+      return;
+    }
+
     supabase.auth.getSession().then(({ data }) => {
       setSession(data.session);
       setLoading(false);

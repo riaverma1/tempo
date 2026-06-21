@@ -1,7 +1,7 @@
 import React, { useCallback, useState } from 'react';
 import { FlatList, SafeAreaView, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect } from 'expo-router';
 import { Colors } from '@/constants/colors';
 import { WorkoutCard } from '@/components/WorkoutCard';
 import { supabase } from '@/lib/supabase';
