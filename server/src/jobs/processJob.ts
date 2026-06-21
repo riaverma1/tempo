@@ -102,9 +102,9 @@ export async function processJob(params: {
       const result = await downloadVideo(url, tmpDir);
       if (result) {
         videoPath = result.path;
-        log(jobId, `download complete via ${result.method}`);
+        log(jobId, 'download complete');
       } else {
-        log(jobId, 'download failed — both yt-dlp and Cobalt failed');
+        log(jobId, 'download failed');
         throw new Error('Could not download this video. Try saving it to your camera roll and uploading it directly.');
       }
     }
