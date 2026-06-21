@@ -55,16 +55,22 @@ export async function processVideoRoute(app: FastifyInstance) {
 
     // Create job row
     const jobId = crypto.randomUUID();
-    await db.from('processing_jobs').insert({
+    const { error: insertErr } = await db.from('processing_jobs').insert({
       id: jobId,
       user_id: userId,
       status: 'pending',
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     });
+    if (insertErr) {
+      console.error(`[job:${jobId}] insert failed:`, insertErr.message, insertErr.code);
+      return reply.status(500).send({ error: 'Failed to create job' });
+    }
 
     // Kick off async (don't await)
-    processJob({ jobId, userId, url, filePath, platform }).catch(() => {});
+    processJob({ jobId, userId, url, filePath, platform }).catch((err) => {
+      console.error(`[job:${jobId}] unhandled error:`, err);
+    });
 
     return reply.send({ job_id: jobId });
   });
