@@ -1,5 +1,5 @@
 # Build stage: install all deps (including devDependencies) and compile TypeScript
-FROM node:20-slim AS builder
+FROM node:22-slim AS builder
 
 WORKDIR /app
 COPY server/package*.json ./
@@ -10,7 +10,7 @@ COPY server/src ./src
 RUN npx tsc
 
 # Production stage: lean image with only runtime deps and compiled output
-FROM node:20-slim
+FROM node:22-slim
 
 RUN apt-get update && apt-get install -y \
     ffmpeg \
