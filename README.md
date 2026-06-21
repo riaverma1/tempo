@@ -135,13 +135,40 @@ Focus Mode (per movement)
 
 ---
 
-## Tech stack
+## Stack
 
-| Layer | Stack |
+### App
+| | |
 |---|---|
-| App | React Native + Expo (TypeScript) |
-| Server | Node.js + Fastify (TypeScript), hosted on Railway |
-| Database / Auth / Storage | Supabase |
-| AI segmentation | Twelve Labs — Marengo 3.0 indexing + Pegasus 1.5 analysis |
-| Video download | yt-dlp (primary), Cobalt (fallback) |
-| Clip cutting | ffmpeg |
+| Framework | React Native + Expo (TypeScript) |
+| Navigation | Expo Router |
+| Gestures | react-native-gesture-handler + react-native-draggable-flatlist |
+| Auth | Supabase Auth with Google OAuth |
+
+### Server
+| | |
+|---|---|
+| Runtime | Node.js 20 |
+| Framework | Fastify (TypeScript) |
+| Hosting | Railway (Dockerfile deploy) |
+
+### APIs & Services
+| Service | What it does |
+|---|---|
+| Supabase | Postgres database, auth, and file storage (clips + thumbnails) |
+| Twelve Labs | AI video analysis — Marengo 3.0 indexing + Pegasus 1.5 segmentation |
+| Google OAuth | Sign-in (via Supabase Auth provider) |
+| YouTube Data API v3 | Title fetching for YouTube URLs (optional — falls back to yt-dlp) |
+| Cobalt | Fallback video downloader if yt-dlp fails |
+
+### Tooling
+| Tool | What it does |
+|---|---|
+| yt-dlp | Downloads YouTube, TikTok, and Instagram videos |
+| ffmpeg | Cuts movement clips and extracts thumbnails |
+
+### Distribution
+| | |
+|---|---|
+| Personal device | Xcode direct install (no App Store, no developer account) |
+| Server deploys | Push to GitHub → Railway auto-deploys |

@@ -1,0 +1,9 @@
+[build]
+dockerfilePath = "server/Dockerfile"
+buildCommand = ""
+
+[deploy]
+startCommand = "node dist/index.js"
+healthcheckPath = "/health"
+healthcheckTimeout = 30
+restartPolicyType = "on_failure"
