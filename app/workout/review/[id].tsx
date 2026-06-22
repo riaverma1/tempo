@@ -31,7 +31,7 @@ interface EditTarget {
 }
 
 export default function ReviewScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, new: isNew } = useLocalSearchParams<{ id: string; new?: string }>();
   const router = useRouter();
 
   const [title, setTitle] = useState('');
@@ -129,6 +129,26 @@ export default function ReviewScreen() {
         onPress: () => setMovements((prev) => prev.filter((m) => m._key !== key)),
       },
     ]);
+  };
+
+  const discardAndLeave = () => {
+    if (isNew === 'true') {
+      Alert.alert('Discard workout?', 'This workout will not be saved.', [
+        { text: 'Keep editing', style: 'cancel' },
+        {
+          text: 'Discard',
+          style: 'destructive',
+          onPress: async () => {
+            if (!id) return;
+            await supabase.from('workout_movements').delete().eq('workout_id', id);
+            await supabase.from('workouts').delete().eq('id', id);
+            router.replace('/(tabs)/library');
+          },
+        },
+      ]);
+    } else {
+      router.back();
+    }
   };
 
   const deleteWorkout = () => {
@@ -258,7 +278,7 @@ export default function ReviewScreen() {
       <SafeAreaView style={styles.safe}>
         {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()}>
+          <TouchableOpacity onPress={discardAndLeave}>
             <Text style={styles.cancelBtn}>Cancel</Text>
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Edit Workout</Text>

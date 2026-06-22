@@ -168,6 +168,13 @@ export async function processJob(params: {
       });
     }
 
+    // Check if user cancelled while we were processing
+    const { data: currentJob } = await db.from('processing_jobs').select('error').eq('id', jobId).single();
+    if (currentJob?.error === '__cancelled__') {
+      log(jobId, 'cancelled by user — skipping workout creation');
+      return;
+    }
+
     const sourceThumbUrl = (url ? getVideoThumbnailUrl(url) : null) ?? firstThumbUrl;
     const { error: svErr } = await db.from('source_videos').upsert({
       id: sourceVideoId,

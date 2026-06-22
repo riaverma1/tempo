@@ -4,6 +4,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Colors } from '@/constants/colors';
 import { ProcessingStatusView } from '@/components/ProcessingStatus';
 import { useProcessingJob } from '@/hooks/useProcessingJob';
+import { supabase } from '@/lib/supabase';
 
 export default function ProcessingScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -12,14 +13,24 @@ export default function ProcessingScreen() {
 
   useEffect(() => {
     if (workoutId) {
-      router.replace(`/workout/review/${workoutId}`);
+      router.replace(`/workout/review/${workoutId}?new=true`);
     }
   }, [workoutId]);
+
+  const handleCancel = async () => {
+    if (id && job?.status !== 'complete' && job?.status !== 'failed') {
+      await supabase
+        .from('processing_jobs')
+        .update({ status: 'failed', error: '__cancelled__', updated_at: new Date().toISOString() })
+        .eq('id', id);
+    }
+    router.back();
+  };
 
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.nav}>
-        <TouchableOpacity onPress={() => router.back()}>
+        <TouchableOpacity onPress={handleCancel}>
           <Text style={styles.cancel}>Cancel</Text>
         </TouchableOpacity>
       </View>
