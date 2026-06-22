@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#6C63FF;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#00D4FF;stop-opacity:1" />
+    </linearGradient>
+    <filter id="glow1">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1024" height="1024" rx="200" fill="#090D1B"/>
+
+  <!-- T stem -->
+  <rect x="452" y="280" width="120" height="460" rx="16" fill="url(#grad1)"/>
+
+  <!-- T crossbar -->
+  <rect x="220" y="280" width="584" height="110" rx="16" fill="url(#grad1)"/>
+
+  <!-- Waveform bars inside T crossbar (cutout effect via dark rects) -->
+  <rect x="264" y="308" width="14" height="54" rx="4" fill="#090D1B" opacity="0.7"/>
+  <rect x="292" y="322" width="14" height="26" rx="4" fill="#090D1B" opacity="0.7"/>
+  <rect x="320" y="300" width="14" height="70" rx="4" fill="#090D1B" opacity="0.7"/>
+  <rect x="348" y="316" width="14" height="38" rx="4" fill="#090D1B" opacity="0.7"/>
+  <rect x="376" y="308" width="14" height="54" rx="4" fill="#090D1B" opacity="0.7"/>
+  <rect x="404" y="325" width="14" height="20" rx="4" fill="#090D1B" opacity="0.7"/>
+
+  <rect x="608" y="308" width="14" height="54" rx="4" fill="#090D1B" opacity="0.7"/>
+  <rect x="636" y="316" width="14" height="38" rx="4" fill="#090D1B" opacity="0.7"/>
+  <rect x="664" y="300" width="14" height="70" rx="4" fill="#090D1B" opacity="0.7"/>
+  <rect x="692" y="322" width="14" height="26" rx="4" fill="#090D1B" opacity="0.7"/>
+  <rect x="720" y="308" width="14" height="54" rx="4" fill="#090D1B" opacity="0.7"/>
+  <rect x="748" y="325" width="14" height="20" rx="4" fill="#090D1B" opacity="0.7"/>
+</svg>

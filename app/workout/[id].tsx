@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { ActivityIndicator, Image, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Image, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Colors } from '@/constants/colors';
 import { FocusModePlayer } from '@/components/FocusMode/FocusModePlayer';
 import { useWorkout } from '@/hooks/useWorkout';
+import { WorkoutMovement } from '@/types';
 
 export default function WorkoutScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -40,27 +41,60 @@ export default function WorkoutScreen() {
           <Text style={styles.close}>✕</Text>
         </TouchableOpacity>
         <Text style={styles.navTitle} numberOfLines={1}>{workout.title}</Text>
-        <TouchableOpacity onPress={() => router.push(`/workout/review/${id}`)}>
-          <Text style={styles.editBtn}>Edit</Text>
-        </TouchableOpacity>
+        {!started ? (
+          <TouchableOpacity onPress={() => router.push(`/workout/review/${id}`)}>
+            <Text style={styles.editBtn}>Edit</Text>
+          </TouchableOpacity>
+        ) : (
+          <View style={{ width: 28 }} />
+        )}
       </View>
 
       {!started ? (
         <View style={styles.cover}>
-          <View style={styles.thumbWrap}>
-            {thumbnail ? (
-              <Image source={{ uri: thumbnail }} style={StyleSheet.absoluteFill} resizeMode="cover" />
-            ) : (
-              <View style={styles.thumbPlaceholder} />
-            )}
-            <View style={styles.overlay} />
-            <TouchableOpacity style={styles.playBtn} onPress={() => setStarted(true)} activeOpacity={0.85}>
-              <Text style={styles.playIcon}>▶</Text>
+          <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+            <View style={styles.thumbWrap}>
+              {thumbnail ? (
+                <Image source={{ uri: thumbnail }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+              ) : (
+                <View style={styles.thumbPlaceholder} />
+              )}
+              <View style={styles.overlay} />
+            </View>
+            <View style={styles.coverMeta}>
+              <Text style={styles.coverTitle}>{workout.title}</Text>
+              <Text style={styles.coverSub}>{movements.length} movements</Text>
+            </View>
+            <View style={styles.movementList}>
+              <Text style={styles.sectionLabel}>Movements</Text>
+              {movements.map((wm: WorkoutMovement, i: number) => {
+                const m = wm.movement;
+                const detail = m.mode === 'timed' && m.duration_sec
+                  ? `${m.duration_sec}s`
+                  : m.reps && m.sets
+                  ? `${m.sets}×${m.reps}`
+                  : m.reps
+                  ? `${m.reps} reps`
+                  : null;
+                return (
+                  <View key={wm.id} style={styles.movementRow}>
+                    <Text style={styles.movementNum}>{i + 1}</Text>
+                    {m.thumbnail_url ? (
+                      <Image source={{ uri: m.thumbnail_url }} style={styles.movementThumb} />
+                    ) : (
+                      <View style={[styles.movementThumb, styles.movementThumbPlaceholder]} />
+                    )}
+                    <Text style={styles.movementName} numberOfLines={2}>{m.name}</Text>
+                    {detail && <Text style={styles.movementDetail}>{detail}</Text>}
+                  </View>
+                );
+              })}
+            </View>
+          </ScrollView>
+          <View style={styles.startBar}>
+            <TouchableOpacity style={styles.startBtn} onPress={() => setStarted(true)} activeOpacity={0.85}>
+              <Text style={styles.startBtnText}>Start</Text>
             </TouchableOpacity>
-          </View>
-          <View style={styles.coverMeta}>
-            <Text style={styles.coverTitle}>{workout.title}</Text>
-            <Text style={styles.coverSub}>{movements.length} movements</Text>
           </View>
         </View>
       ) : (
@@ -107,12 +141,13 @@ const styles = StyleSheet.create({
   cover: {
     flex: 1,
   },
+  scrollContent: {
+    paddingBottom: 24,
+  },
   thumbWrap: {
     width: '100%',
     aspectRatio: 16 / 9,
     backgroundColor: Colors.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   thumbPlaceholder: {
     ...StyleSheet.absoluteFillObject,
@@ -120,25 +155,13 @@ const styles = StyleSheet.create({
   },
   overlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.35)',
-  },
-  playBtn: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: Colors.accent,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  playIcon: {
-    color: '#000',
-    fontSize: 28,
-    marginLeft: 4,
+    backgroundColor: 'rgba(0,0,0,0.2)',
   },
   coverMeta: {
     paddingHorizontal: 24,
-    paddingTop: 24,
-    gap: 6,
+    paddingTop: 20,
+    paddingBottom: 4,
+    gap: 4,
   },
   coverTitle: {
     color: Colors.text,
@@ -149,6 +172,72 @@ const styles = StyleSheet.create({
   coverSub: {
     color: Colors.textSecondary,
     fontSize: 14,
+  },
+  movementList: {
+    paddingHorizontal: 20,
+    paddingTop: 24,
+    gap: 2,
+  },
+  sectionLabel: {
+    color: Colors.textMuted,
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+    marginBottom: 12,
+  },
+  movementRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  movementNum: {
+    color: Colors.textMuted,
+    fontSize: 13,
+    fontWeight: '600',
+    width: 20,
+    textAlign: 'right',
+  },
+  movementThumb: {
+    width: 52,
+    height: 52,
+    borderRadius: 6,
+  },
+  movementThumbPlaceholder: {
+    backgroundColor: Colors.surfaceAlt,
+  },
+  movementName: {
+    flex: 1,
+    color: Colors.text,
+    fontSize: 15,
+    fontWeight: '500',
+  },
+  movementDetail: {
+    color: Colors.textSecondary,
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  startBar: {
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
+    backgroundColor: Colors.background,
+  },
+  startBtn: {
+    height: 54,
+    borderRadius: 14,
+    backgroundColor: Colors.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  startBtnText: {
+    color: '#000',
+    fontSize: 17,
+    fontWeight: '800',
   },
   center: {
     flex: 1,

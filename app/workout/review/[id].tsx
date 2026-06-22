@@ -297,8 +297,14 @@ export default function ReviewScreen() {
         </TouchableOpacity>
 
         <View style={styles.sectionRow}>
-          <Text style={styles.sectionLabel}>{movements.length} movements · hold ⠿ to reorder</Text>
-          <TouchableOpacity onPress={() => openEdit({ type: 'all-durations', key: 'all', current: '' })}>
+          <View style={styles.sectionMeta}>
+            <Text style={styles.sectionLabel}>{movements.length} movements</Text>
+            <Text style={styles.sectionHint}>Hold ⠿ to reorder</Text>
+          </View>
+          <TouchableOpacity
+            onPress={() => openEdit({ type: 'all-durations', key: 'all', current: '' })}
+            style={styles.setAllBtnWrap}
+          >
             <Text style={styles.setAllBtn}>Set all durations</Text>
           </TouchableOpacity>
         </View>
@@ -416,14 +422,27 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingBottom: 10,
+    paddingTop: 16,
+    paddingBottom: 14,
+  },
+  sectionMeta: {
+    gap: 3,
   },
   sectionLabel: {
-    color: Colors.textSecondary,
+    color: Colors.text,
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  sectionHint: {
+    color: Colors.textMuted,
     fontSize: 12,
-    fontWeight: '600',
-    letterSpacing: 0.8,
-    textTransform: 'uppercase',
+  },
+  setAllBtnWrap: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: Colors.border,
   },
   setAllBtn: {
     color: Colors.accent,

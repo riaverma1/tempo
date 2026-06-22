@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View, useWindowDimensions } from 'react-native';
 import { VideoView, useVideoPlayer } from 'expo-video';
-import { Audio } from 'expo-av';
+import { Audio, InterruptionModeIOS, InterruptionModeAndroid } from 'expo-av';
 import { Colors } from '@/constants/colors';
 import { WorkoutMovement } from '@/types';
 import { CountdownTimer } from './CountdownTimer';
@@ -26,8 +26,10 @@ export function FocusModePlayer({ movements, onFinish }: Props) {
     Audio.setAudioModeAsync({
       playsInSilentModeIOS: true,
       staysActiveInBackground: false,
-      shouldDuckAndroid: false,
       allowsRecordingIOS: false,
+      interruptionModeIOS: InterruptionModeIOS.MixWithOthers,
+      interruptionModeAndroid: InterruptionModeAndroid.DoNotMix,
+      shouldDuckAndroid: false,
     });
 
     Audio.Sound.createAsync(require('@/assets/beep.mp3')).then(({ sound }) => {
@@ -63,6 +65,7 @@ export function FocusModePlayer({ movements, onFinish }: Props) {
   const player = useVideoPlayer(m.clip_url || null, (p) => {
     p.loop = true;
     p.muted = muted;
+    p.audioMixingMode = 'mixWithOthers';
     if (m.clip_url) p.play();
   });
 
@@ -141,6 +144,7 @@ export function FocusModePlayer({ movements, onFinish }: Props) {
       <View style={styles.displayContainer}>
         {m.mode === 'timed' && m.duration_sec ? (
           <CountdownTimer
+            key={index}
             durationSec={m.duration_sec}
             running={!paused}
             onComplete={handleNext}
