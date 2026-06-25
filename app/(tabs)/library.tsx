@@ -1,7 +1,6 @@
 import React, { useCallback, useState } from 'react';
 import { FlatList, SafeAreaView, StyleSheet, Text, View } from 'react-native';
-import { useRouter } from 'expo-router';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { Colors } from '@/constants/colors';
 import { WorkoutCard } from '@/components/WorkoutCard';
 import { supabase } from '@/lib/supabase';
@@ -13,22 +12,17 @@ export default function Library() {
   const router = useRouter();
 
   const fetchWorkouts = useCallback(async () => {
-    const BYPASS = process.env.EXPO_PUBLIC_USE_MOCK === 'true' || process.env.EXPO_PUBLIC_BYPASS_AUTH === 'true';
-    const DEV_USER_ID = '2b1e7153-2d91-49c3-a71b-66e6e26c651e';
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const userId = user.id;
 
-    let userId = DEV_USER_ID;
-    if (!BYPASS) {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      userId = user.id;
-    }
-
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('workouts')
       .select('*, source_video:source_videos(*), movements:workout_movements(id, movement:movements(duration_sec))')
       .eq('user_id', userId)
       .order('created_at', { ascending: false });
 
+    if (error) console.error('[library] fetch error:', error.message);
     if (data) setWorkouts(data as Workout[]);
     setLoading(false);
   }, []);

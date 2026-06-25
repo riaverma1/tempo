@@ -13,7 +13,23 @@ Tempo turns workout videos into interactive, movement-by-movement training sessi
 
 ---
 
-## Running the app
+## Tech Stack Snapshot
+
+| Layer | Technology |
+|---|---|
+| Frontend / Client | React Native (Expo) — iOS app |
+| Backend | Node.js server deployed on Railway |
+| Video download | yt-dlp running on Raspberry Pi (residential IP) |
+| AI video analysis | Twelve Labs API — multimodal video understanding |
+| Video processing | ffmpeg — clip cutting and thumbnail generation |
+| Storage | Supabase Storage (files) + Supabase Postgres (metadata) |
+| Real-time updates | Supabase Realtime (WebSocket) |
+| UI tooling | Lovable (UI/UX prototyping) + Claude Code (backend/architecture) |
+
+---
+
+
+## Running the app locally (on Mac)
 
 See [SETUP.md](SETUP.md) for full environment setup (Supabase, Twelve Labs, env files).
 
@@ -135,7 +151,7 @@ Focus Mode (per movement)
 
 ---
 
-## Stack
+## Full Stack
 
 ### App
 | | |

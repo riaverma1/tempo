@@ -4,8 +4,7 @@ import fs from 'fs/promises';
 import { db } from '../db/client';
 import { downloadVideo } from '../pipeline/download';
 import { getVideoTitle, getVideoThumbnailUrl } from '../pipeline/chapters';
-import { ParsedSegment } from '../pipeline/twelvelabs';
-import { analyzeWithTwelveLabs } from '../pipeline/twelvelabs';
+import { ParsedSegment, analyzeWithTwelveLabs } from '../pipeline/twelvelabs';
 import { cutClips, ClipSpec } from '../pipeline/ffmpeg';
 import { uploadClip } from '../pipeline/upload';
 
@@ -176,7 +175,7 @@ export async function processJob(params: {
     }
 
     const sourceThumbUrl = (url ? getVideoThumbnailUrl(url) : null) ?? firstThumbUrl;
-    const { error: svErr } = await db.from('source_videos').upsert({
+    const { data: svRow, error: svErr } = await db.from('source_videos').upsert({
       id: sourceVideoId,
       user_id: userId,
       original_url: url ?? null,
@@ -185,10 +184,15 @@ export async function processJob(params: {
       thumbnail_url: sourceThumbUrl,
       processing_status: 'complete',
       processed_at: new Date().toISOString(),
-    }, { onConflict: 'original_url' });
+    }, { onConflict: 'original_url' }).select('id').single();
     if (svErr) throw new Error(svErr.message);
 
-    const { error: movErr } = await db.from('movements').insert(movementRows);
+    // If a source_video already existed for this URL (e.g. a previous failed run),
+    // the upsert updates it but keeps the original primary key — use that real ID.
+    const actualSourceVideoId = svRow.id;
+    const finalMovementRows = movementRows.map(m => ({ ...m, source_video_id: actualSourceVideoId }));
+
+    const { error: movErr } = await db.from('movements').insert(finalMovementRows);
     if (movErr) throw new Error(movErr.message);
 
     const workoutId = crypto.randomUUID();
@@ -196,11 +200,11 @@ export async function processJob(params: {
       id: workoutId,
       user_id: userId,
       title,
-      source_video_id: sourceVideoId,
+      source_video_id: actualSourceVideoId,
     });
     if (wErr) throw new Error(wErr.message);
 
-    const workoutMovements = movementRows.map((m, i) => ({
+    const workoutMovements = finalMovementRows.map((m, i) => ({
       id: crypto.randomUUID(),
       workout_id: workoutId,
       movement_id: m.id,
@@ -210,7 +214,7 @@ export async function processJob(params: {
 
     await db.from('processing_jobs').update({
       status: 'complete',
-      source_video_id: sourceVideoId,
+      source_video_id: actualSourceVideoId,
       updated_at: new Date().toISOString(),
     }).eq('id', jobId);
 

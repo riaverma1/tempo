@@ -7,11 +7,10 @@ create table source_videos (
   id uuid primary key default uuid_generate_v4(),
   user_id uuid not null references auth.users(id) on delete cascade,
   original_url text unique,
-  platform text not null check (platform in ('youtube', 'tiktok', 'uploaded')),
+  platform text not null check (platform in ('youtube', 'tiktok', 'uploaded', 'instagram', 'facebook')),
   title text not null default '',
   duration_sec integer,
   thumbnail_url text,
-  chapter_markers jsonb,
   processing_status text not null default 'pending'
     check (processing_status in ('pending', 'processing', 'complete', 'failed')),
   processed_at timestamptz,
@@ -34,6 +33,7 @@ create table movements (
   reps integer,
   sets integer,
   clip_url text not null,
+  thumbnail_url text,
   detection_method text not null check (detection_method in ('chapter_marker', 'ocr', 'twelve_labs')),
   confidence float not null default 0,
   created_at timestamptz not null default now()
@@ -72,8 +72,7 @@ create table processing_jobs (
   user_id uuid not null references auth.users(id) on delete cascade,
   source_video_id uuid references source_videos(id),
   status text not null default 'pending' check (status in (
-    'pending', 'downloading', 'checking_chapters', 'running_ocr',
-    'analyzing', 'cutting_clips', 'uploading', 'complete', 'failed'
+    'pending', 'downloading', 'analyzing', 'cutting_clips', 'uploading', 'complete', 'failed'
   )),
   segments_found integer,
   detection_method_used text check (detection_method_used in ('chapter_marker', 'ocr', 'twelve_labs')),

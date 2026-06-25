@@ -75,7 +75,6 @@ SUPABASE_URL=https://<project>.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=<service role key>
 TWELVE_LABS_API_KEY=<your key>
 YOUTUBE_DATA_API_KEY=<your key>   # optional
-COBALT_URL=                       # optional: internal Railway URL of Cobalt service
 PORT=3000
 NODE_ENV=development
 
