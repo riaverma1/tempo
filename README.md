@@ -25,7 +25,7 @@ https://github.com/user-attachments/assets/b4cbf966-fc43-418a-bc7b-53528055c9ec
 
 ## Getting Started
 
-<img src="screenshots/how_to_use_flow.png" alt="Tempo app flow" width="100%" />
+<img src="assets/screenshots/how_to_use_flow.png" alt="Tempo app flow" width="100%" />
 
 | Step | What happens |
 |------|-------------|
