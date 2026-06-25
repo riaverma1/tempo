@@ -2,6 +2,8 @@
 
 Tempo turns workout videos into interactive, movement-by-movement training sessions. Paste a YouTube, TikTok, or Instagram Reel link — or upload a video from your camera roll — and Tempo automatically identifies each exercise, cuts it into a clip, and walks you through the workout with a built-in timer or rep counter.
 
+https://github.com/user-attachments/assets/b4cbf966-fc43-418a-bc7b-53528055c9ec
+
 ---
 
 ## What it does
