@@ -12,9 +12,15 @@ export default function Library() {
   const router = useRouter();
 
   const fetchWorkouts = useCallback(async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    const userId = user.id;
+    const BYPASS_AUTH = process.env.EXPO_PUBLIC_USE_MOCK === 'true' || process.env.EXPO_PUBLIC_BYPASS_AUTH === 'true';
+    let userId: string | null = null;
+    if (BYPASS_AUTH) {
+      userId = process.env.EXPO_PUBLIC_DEV_USER_ID ?? null;
+    } else {
+      const { data: { user } } = await supabase.auth.getUser();
+      userId = user?.id ?? null;
+    }
+    if (!userId) { setLoading(false); return; }
 
     const { data, error } = await supabase
       .from('workouts')
