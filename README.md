@@ -1,8 +1,8 @@
 # Tempo
 
-Tempo turns workout videos into interactive, movement-by-movement training sessions. Paste a YouTube, TikTok, or Instagram Reel link — or upload a video from your camera roll — and Tempo automatically identifies each exercise, cuts it into a clip, and walks you through the workout with a built-in timer or rep counter.
+Tempo turns workout videos into interactive, movement-by-movement training sessions. 
 
-https://github.com/user-attachments/assets/b4cbf966-fc43-418a-bc7b-53528055c9ec
+Paste a YouTube, TikTok, or Instagram Reel link — or upload a video from your camera roll — and Tempo automatically identifies each exercise, cuts it into a clip, and walks you through the workout with a built-in timer or rep counter.
 
 ---
 
@@ -11,7 +11,30 @@ https://github.com/user-attachments/assets/b4cbf966-fc43-418a-bc7b-53528055c9ec
 1. **Add a video** — paste a link or import from camera roll
 2. **AI analyzes it** — Twelve Labs identifies every distinct movement with timestamps
 3. **Review your workout** — reorder or delete movements before you start
-4. **Train** — each clip plays in sequence with a countdown timer (timed sets) or rep display (rep-based sets), with next-movement preview
+4. **Train** — each clip plays in sequence with a countdown timer (timed sets) with next-movement preview
+
+---
+
+## How It Works
+
+Tempo turns any workout video from YouTube or TikTok into a guided, rep-by-rep workout — automatically.
+
+https://github.com/user-attachments/assets/b4cbf966-fc43-418a-bc7b-53528055c9ec
+
+---
+
+## Getting Started
+
+<img src="screenshots/how_to_use_flow.png" alt="Tempo app flow" width="100%" />
+
+| Step | What happens |
+|------|-------------|
+| **1. Add a Workout** | Paste a YouTube or TikTok link into the Add Workout screen |
+| **2. AI Processes** | Tempo downloads the video, analyzes movements with AI, and cuts it into individual clips (~30–60 sec) |
+| **3. Review Exercises** | See every exercise detected — with its own clip, name, and duration |
+| **4. Customize & Save** | Rename the workout, reorder movements, or adjust durations, then tap Save |
+| **5. Start Workout** | Hit Start — each exercise plays its clip with a countdown timer |
+| **6. Exercise + Timer** | Follow along with video and timer. Use Next / Prev to skip around |
 
 ---
 
