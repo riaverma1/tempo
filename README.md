@@ -19,7 +19,7 @@ Paste a YouTube, TikTok, or Instagram Reel link — or upload a video from your 
 
 Tempo turns any workout video from YouTube or TikTok into a guided, rep-by-rep workout — automatically.
 
-https://github.com/riaverma1/tempo/issues/12#issuecomment-4804746527
+https://github.com/user-attachments/assets/57741806-d4a1-43d5-8605-99c25640b73f
 
 ---
 
