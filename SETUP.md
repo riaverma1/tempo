@@ -38,7 +38,7 @@ You need accounts and keys for:
 ### Supabase setup
 1. Create a project at supabase.com
 2. **New project:** run `supabase/schema.sql` in the SQL editor (Database → SQL Editor) — it leaves Row Level Security off. Tempo has no sign-in flow, so there's no `auth.uid()` to scope policies to, and `user_id` isn't a Supabase Auth foreign key either; see the comment in that file.
-   **Existing project** (created before the PDF/plain-text pipeline existed): instead run the files in `supabase/migrations/` in order — `0002_text_input_pipeline.sql`, then `0003_remove_webpage_platform.sql` — against your existing database.
+   **Existing project** (created before the PDF/text/image pipeline existed): instead run the files in `supabase/migrations/` in order — `0002_text_input_pipeline.sql`, `0003_remove_webpage_platform.sql`, then `0004_image_input.sql` — against your existing database.
 3. Generate any UUID (e.g. `uuidgen` in a terminal) — that becomes `EXPO_PUBLIC_USER_ID` / `OWNER_USER_ID` below. It's just an owner tag on every row, not a real account.
 
 ### Google Cloud setup (optional)
