@@ -94,35 +94,7 @@ npx expo run:ios        # iOS Simulator, native build
 
 ## Installing on your iPhone (no App Store)
 
-Installs directly to your iPhone via Xcode. No TestFlight, no paid developer account needed. Full detail (including the LAN-IP gotcha) is in **[SETUP.md](SETUP.md#installing-on-your-iphone-no-app-store-no-paid-developer-account)** — short version:
-
-**First time:**
-1. Install Xcode from the Mac App Store
-2. Xcode → Settings → Accounts → add your Apple ID
-3. Connect iPhone via USB, trust the computer on the phone when prompted
-4. Set `EXPO_PUBLIC_API_URL` in `.env` to a URL your **phone** can reach — `localhost` means the phone itself, not your Mac. Use your Mac's LAN IP (`http://<mac-ip>:3000`, same Wi-Fi) or your deployed Railway URL.
-5. Run:
-   ```bash
-   npm install
-   npx expo run:ios --device
-   ```
-6. If Xcode throws a signing error: open `ios/Tempo.xcworkspace` in Xcode → click the project in the sidebar → Signing & Capabilities → set Team to your personal Apple ID and check "Automatically manage signing." Then re-run step 5.
-
-**To update after making app code changes:**
-```bash
-npx expo run:ios --device
-```
-Phone needs to be plugged in. Takes about a minute once the initial build exists.
-
-**What requires a device rebuild vs. what doesn't:**
-
-| Change | What to do |
-|---|---|
-| `server/` changes | Deploy to Railway (or just restart local `npm run dev`) — the phone picks it up over the network, no rebuild |
-| `app/`, `components/`, `hooks/`, `lib/`, `types/` changes | Plug in and run `npx expo run:ios --device` again |
-| New native module or `app.json` `plugins` change | Same rebuild command — this can't be picked up by a JS-only reload |
-
-> Free Apple ID profiles expire every 7 days. When the app stops launching, just plug in and re-run `npx expo run:ios --device`.
+Installs directly to your iPhone via Xcode — no TestFlight, no paid developer account needed. Step-by-step instructions (including the LAN-IP gotcha with `EXPO_PUBLIC_API_URL`, the signing-error fix, and what requires a rebuild vs. what doesn't) live in **[SETUP.md → Installing on your iPhone](SETUP.md#installing-on-your-iphone-no-app-store-no-paid-developer-account)** — that's the canonical copy, kept there rather than duplicated here.
 
 ---
 

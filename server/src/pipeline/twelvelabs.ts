@@ -31,10 +31,11 @@ export function enrichSegmentsWithCaption(
 ): ParsedSegment[] {
   return segments.map((seg) => {
     const segName = normalizeName(seg.name);
-    const match = captionExercises.find((ex) => {
-      const exName = normalizeName(ex.name);
-      return exName.length > 2 && (segName.includes(exName) || exName.includes(segName));
-    });
+    // Exact match only — substring containment (e.g. "squat" inside "jump
+    // squat") matches two genuinely different exercises that happen to
+    // share a word, silently overlaying the wrong numbers. Losing a few
+    // enrichments to near-miss wording is far cheaper than that.
+    const match = captionExercises.find((ex) => normalizeName(ex.name) === segName);
     if (!match) return seg;
 
     if (match.hold_sec != null) {

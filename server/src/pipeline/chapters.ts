@@ -1,9 +1,8 @@
 import { execFile } from 'child_process';
 import { promisify } from 'util';
+import { VideoPlatform } from '../platform';
 
 const execFileAsync = promisify(execFile);
-
-type VideoPlatform = 'youtube' | 'tiktok' | 'instagram' | 'facebook';
 
 // Returns the known video platform for a URL, or null if it's not one —
 // callers treat null as "this is a generic webpage" rather than assuming

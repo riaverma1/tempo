@@ -27,12 +27,19 @@ export default function AddWorkout() {
     }
   };
 
-  const handleFile = async (uri: string, mimeType: string, filename: string) => {
+  const handleFile = async (uri: string, mimeType: string, filename: string, webFile?: File) => {
     try {
       setLoading(true);
       const form = new FormData();
-      // @ts-expect-error RN FormData accepts uri objects
-      form.append('file', { uri, type: mimeType, name: filename });
+      if (webFile) {
+        // A browser's FormData needs a real File/Blob — the {uri, type, name}
+        // shape below is a React Native-only convention its native fetch
+        // polyfill understands, not something a real browser recognizes.
+        form.append('file', webFile, filename);
+      } else {
+        // @ts-expect-error RN FormData accepts uri objects
+        form.append('file', { uri, type: mimeType, name: filename });
+      }
       const { job_id } = await processVideo(form);
       await startProcessing(job_id);
     } catch (err: unknown) {

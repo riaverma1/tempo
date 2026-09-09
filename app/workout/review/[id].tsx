@@ -91,6 +91,15 @@ export default function ReviewScreen() {
   const [webDragY, setWebDragY] = useState(0);
   const webDragStartIndex = useRef(0);
   const webRowPitch = useRef(ROW_PITCH_FALLBACK);
+  // Dragging calls setMovements/setWebDragY on every mousemove, which
+  // re-renders every row — without caching, that rebuilds a PanResponder
+  // (and all its gesture closures) for every row on every single frame of
+  // a drag. Cached per row key instead, built once and reused; the ref
+  // below keeps onPanResponderGrant reading the current movements array
+  // without needing the responder to be rebuilt when it changes.
+  const movementsRef = useRef<ReviewMovement[]>([]);
+  movementsRef.current = movements;
+  const webPanResponders = useRef(new Map<string, ReturnType<typeof PanResponder.create>>());
 
   useEffect(() => {
     if (!id) return;
@@ -177,10 +186,23 @@ export default function ReviewScreen() {
       const idx = prev.findIndex((m) => m._key === key);
       if (idx === -1) return prev;
       const original = prev[idx];
+      // A genuinely independent copy — sharing the original's movement.id
+      // (as a plain spread would) means editing either one's duration and
+      // saving overwrites the same DB row, and inheriting auto_generated
+      // means the "rest between moves" toggle can delete this copy along
+      // with the real auto-generated rests it's meant to leave alone.
+      const newMovementId = `new_movement_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
       const copy: ReviewMovement = {
         ...original,
         _key: `${original._key}_copy_${Date.now()}`,
         id: `new_${Date.now()}`,
+        movement_id: newMovementId,
+        movement: {
+          ...original.movement,
+          id: newMovementId,
+          auto_generated: false,
+          created_at: new Date().toISOString(),
+        },
       };
       const next = [...prev];
       next.splice(idx + 1, 0, copy);
@@ -278,17 +300,22 @@ export default function ReviewScreen() {
     const toDelete = (existing ?? []).filter((r) => !activeIds.has(r.id)).map((r) => r.id);
     if (toDelete.length > 0) await supabase.from('workout_movements').delete().in('id', toDelete);
 
-    // Update or insert each movement row
-    for (let i = 0; i < movements.length; i++) {
-      const m = movements[i];
-      let movementId = m.movement.id;
+    // Everything below is batched into a handful of bulk calls instead of
+    // looping per row — a flattened reps×sets workout easily runs 50-200+
+    // rows, which meant that many serialized round trips on every Save.
 
-      if (movementId.startsWith('new_movement_')) {
-        // A row created in this session (e.g. an inserted rest) — no existing
-        // DB row to update, unlike a duplicate() which reuses one.
-        const { data: inserted } = await supabase.from('movements').insert({
+    // Insert every brand-new movement row (e.g. a hand-inserted rest) in one
+    // batch, then map each one's temp client-side id to the real id Postgres
+    // assigns — a single multi-row INSERT...RETURNING preserves input order.
+    const newMovements = movements
+      .map((m, position) => ({ m, position }))
+      .filter(({ m }) => m.movement.id.startsWith('new_movement_'));
+    const movementIdMap = new Map<string, string>();
+    if (newMovements.length > 0) {
+      const { data: inserted } = await supabase.from('movements').insert(
+        newMovements.map(({ m, position }) => ({
           source_video_id: m.movement.source_video_id,
-          position: i,
+          position,
           name: m.movement.name,
           mode: m.movement.mode,
           start_sec: m.movement.start_sec,
@@ -302,24 +329,82 @@ export default function ReviewScreen() {
           confidence: m.movement.confidence,
           is_rest: m.movement.is_rest,
           auto_generated: m.movement.auto_generated,
-        }).select('id').single();
-        if (inserted) movementId = inserted.id;
-      } else {
-        await supabase.from('movements').update({
-          name: m.movement.name,
-          duration_sec: m.movement.duration_sec,
-        }).eq('id', movementId);
-      }
+        }))
+      ).select('id');
+      (inserted ?? []).forEach((row, i) => movementIdMap.set(newMovements[i].m.movement.id, row.id));
+    }
 
-      if (m.id.startsWith('new_')) {
-        await supabase.from('workout_movements').insert({
+    // Bulk-update the rest. Postgres validates NOT NULL columns against the
+    // row it would insert *before* checking for a conflict, even though
+    // every one of these rows already exists and is headed for the UPDATE
+    // branch — so every NOT NULL column has to be supplied here, not just
+    // the two (name, duration_sec) that can actually change.
+    const existingMovements = movements.filter((m) => !m.movement.id.startsWith('new_movement_'));
+    if (existingMovements.length > 0) {
+      await supabase.from('movements').upsert(
+        existingMovements.map((m) => ({
+          id: m.movement.id,
+          source_video_id: m.movement.source_video_id,
+          position: m.movement.position,
+          name: m.movement.name,
+          mode: m.movement.mode,
+          duration_sec: m.movement.duration_sec,
+          reps: m.movement.reps,
+          sets: m.movement.sets,
+          clip_url: m.movement.clip_url,
+          thumbnail_url: m.movement.thumbnail_url,
+          detection_method: m.movement.detection_method,
+          confidence: m.movement.confidence,
+          is_rest: m.movement.is_rest,
+          auto_generated: m.movement.auto_generated,
+        }))
+      );
+    }
+
+    const resolvedMovementId = (m: ReviewMovement) => movementIdMap.get(m.movement.id) ?? m.movement.id;
+
+    const wmToInsert = movements.map((m, position) => ({ m, position })).filter(({ m }) => m.id.startsWith('new_'));
+    const wmToUpdate = movements.map((m, position) => ({ m, position })).filter(({ m }) => !m.id.startsWith('new_'));
+
+    // workout_movements has a unique(workout_id, position) constraint, so
+    // reordering (or inserting a new row in the middle, which shifts
+    // everything after it) can ask to move a row into a slot another row
+    // in this same save hasn't vacated yet — Postgres checks the
+    // constraint immediately per row, not once at the end of the
+    // statement, so that fails outright. Parking every existing row at a
+    // temporary, guaranteed-clear position first sidesteps that: nothing
+    // real occupies the target range by the time inserts/final positions
+    // happen.
+    if (wmToUpdate.length > 0) {
+      await supabase.from('workout_movements').upsert(
+        wmToUpdate.map(({ m }, i) => ({
+          id: m.id,
           workout_id: id,
-          movement_id: movementId,
-          position: i,
-        });
-      } else {
-        await supabase.from('workout_movements').update({ position: i }).eq('id', m.id);
-      }
+          movement_id: resolvedMovementId(m),
+          position: 1_000_000 + i,
+        }))
+      );
+    }
+
+    if (wmToInsert.length > 0) {
+      await supabase.from('workout_movements').insert(
+        wmToInsert.map(({ m, position }) => ({
+          workout_id: id,
+          movement_id: resolvedMovementId(m),
+          position,
+        }))
+      );
+    }
+
+    if (wmToUpdate.length > 0) {
+      await supabase.from('workout_movements').upsert(
+        wmToUpdate.map(({ m, position }) => ({
+          id: m.id,
+          workout_id: id,
+          movement_id: resolvedMovementId(m),
+          position,
+        }))
+      );
     }
   };
 
@@ -338,13 +423,16 @@ export default function ReviewScreen() {
   const saveToLibrary = () => { saveAndGoTo('/(tabs)/library'); };
   const save = () => { if (id) saveAndGoTo(`/workout/${id}`); };
 
-  const makeWebPanResponder = (key: string) =>
-    PanResponder.create({
+  const makeWebPanResponder = (key: string) => {
+    const cached = webPanResponders.current.get(key);
+    if (cached) return cached;
+
+    const responder = PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: (_: GestureResponderEvent, g: PanResponderGestureState) =>
         Math.abs(g.dy) > 4,
       onPanResponderGrant: () => {
-        webDragStartIndex.current = movements.findIndex((m) => m._key === key);
+        webDragStartIndex.current = movementsRef.current.findIndex((m) => m._key === key);
         setWebDragKey(key);
         setWebDragY(0);
       },
@@ -353,7 +441,7 @@ export default function ReviewScreen() {
         const shift = Math.round(g.dy / webRowPitch.current);
         const targetIndex = Math.min(
           Math.max(webDragStartIndex.current + shift, 0),
-          movements.length - 1
+          movementsRef.current.length - 1
         );
         setMovements((prev) => {
           const idx = prev.findIndex((m) => m._key === key);
@@ -373,6 +461,9 @@ export default function ReviewScreen() {
         setWebDragY(0);
       },
     });
+    webPanResponders.current.set(key, responder);
+    return responder;
+  };
 
   const renderCard = (m: ReviewMovement, isActive: boolean, reorderControl: React.ReactNode) => (
     <View style={[styles.card, m.movement.is_rest && styles.cardRest, isActive && styles.cardActive]}>

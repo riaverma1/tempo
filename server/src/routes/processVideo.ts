@@ -4,9 +4,9 @@ import path from 'path';
 import fs from 'fs/promises';
 import { db } from '../db/client';
 import { processJob } from '../jobs/processJob';
-import { detectPlatform, detectVideoPlatform } from '../pipeline/chapters';
+import { detectVideoPlatform } from '../pipeline/chapters';
 import { detectFileKind } from '../pipeline/textInput';
-import { Platform } from '../jobs/processJob';
+import { Platform, platformForFileKind } from '../platform';
 
 const MAX_FILE_SIZE = 200 * 1024 * 1024; // 200MB
 
@@ -43,12 +43,11 @@ export async function processVideoRoute(app: FastifyInstance) {
       }
 
       const filenameByKind = { video: 'video.mp4', pdf: 'upload.pdf', image: 'upload.img' } as const;
-      const platformByKind = { video: 'uploaded', pdf: 'pdf', image: 'image' } as const;
 
       const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'tempo-upload-'));
       filePath = path.join(tmpDir, filenameByKind[kind]);
       await fs.writeFile(filePath, await data.toBuffer());
-      platform = platformByKind[kind];
+      platform = platformForFileKind(kind);
     } else {
       const body = request.body as { url?: string; text?: string };
 

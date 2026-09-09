@@ -35,8 +35,12 @@ export function expandToMovements(
     let interExerciseRest = defaultRestSec;
 
     if (ex.hold_sec != null) {
-      const reps = ex.reps ?? 1;
-      const sets = ex.sets ?? 1;
+      // `||` rather than `??` deliberately — an explicit 0 is exactly as
+      // meaningless here as null/undefined (the schema doesn't forbid it,
+      // and 0 reps would otherwise zero out totalReps below and make the
+      // whole exercise vanish with no error).
+      const reps = ex.reps || 1;
+      const sets = ex.sets || 1;
       const restBetween = ex.rest_sec ?? defaultRestSec;
       const totalReps = reps * sets;
 

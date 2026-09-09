@@ -10,15 +10,10 @@ import { uploadClip } from '../pipeline/upload';
 import { extractPdfText, extractPdfImages, renderPdfPagesToImages, normalizeImageToPng } from '../pipeline/textInput';
 import { interpretExercises } from '../pipeline/llmInterpret';
 import { expandToMovements, FlatMovement } from '../pipeline/expand';
-
-export type Platform =
-  | 'youtube' | 'tiktok' | 'instagram' | 'facebook' | 'uploaded'
-  | 'pdf' | 'text' | 'image';
+import { Platform, isTextPlatform } from '../platform';
 
 type JobStatus =
   | 'pending' | 'downloading' | 'analyzing' | 'cutting_clips' | 'uploading' | 'complete' | 'failed';
-
-const TEXT_PLATFORMS: Platform[] = ['pdf', 'text', 'image'];
 
 interface MovementRow {
   id: string;
@@ -47,7 +42,19 @@ async function updateJob(
   update: { status?: JobStatus; segments_found?: number; detection_method_used?: string; error?: string }
 ) {
   if (update.status) log(jobId, `→ ${update.status}`);
-  await db.from('processing_jobs').update({ ...update, updated_at: new Date().toISOString() }).eq('id', jobId);
+  // The cancel button writes error='__cancelled__' from the client while
+  // this job may still be mid-flight — without this guard, a phase-boundary
+  // write already queued before the cancel lands would overwrite status
+  // back to a non-terminal value, leaving the row stuck (status: whatever
+  // this write set, error: '__cancelled__') instead of the terminal state
+  // the cancel button set. Matching zero rows here is the intended outcome.
+  // error is null for the vast majority of jobs — plain .neq() would
+  // exclude those too, since SQL's `NULL != x` is NULL, not true, and a
+  // WHERE clause treats NULL as "exclude." Need the null case explicitly.
+  await db.from('processing_jobs')
+    .update({ ...update, updated_at: new Date().toISOString() })
+    .eq('id', jobId)
+    .or('error.is.null,error.neq.__cancelled__');
 }
 
 // The cancel button just sets error to this sentinel on the job row — there's
@@ -64,6 +71,64 @@ async function checkCancelled(jobId: string) {
   }
 }
 
+// Creates the workout + workout_movements rows pointing at already-existing
+// movement rows, and returns the new workout's id. Shared by the cache-hit
+// "recreate" path (movements already exist, just need a new workout) and by
+// finalizeWorkout below (which inserts the movements first, then delegates
+// here for the rest).
+async function createWorkoutFromMovements(params: {
+  userId: string;
+  title: string;
+  sourceVideoId: string;
+  movements: Array<{ id: string; position: number }>;
+}): Promise<string> {
+  const workoutId = crypto.randomUUID();
+  const { error: wErr } = await db.from('workouts').insert({
+    id: workoutId,
+    user_id: params.userId,
+    title: params.title,
+    source_video_id: params.sourceVideoId,
+  });
+  if (wErr) throw new Error(wErr.message);
+
+  const workoutMovements = params.movements.map((m) => ({
+    id: crypto.randomUUID(),
+    workout_id: workoutId,
+    movement_id: m.id,
+    position: m.position,
+  }));
+  await db.from('workout_movements').insert(workoutMovements);
+  return workoutId;
+}
+
+// Inserts a freshly-produced set of movement rows, wraps them in a new
+// workout, and marks the job complete — the common tail of both pipelines.
+async function finalizeWorkout(params: {
+  jobId: string;
+  userId: string;
+  title: string;
+  sourceVideoId: string;
+  movementRows: MovementRow[];
+}) {
+  const { jobId, userId, title, sourceVideoId, movementRows } = params;
+
+  const { error: movErr } = await db.from('movements').insert(movementRows);
+  if (movErr) throw new Error(movErr.message);
+
+  await createWorkoutFromMovements({
+    userId,
+    title,
+    sourceVideoId,
+    movements: movementRows.map((m, i) => ({ id: m.id, position: i })),
+  });
+
+  await db.from('processing_jobs').update({
+    status: 'complete',
+    source_video_id: sourceVideoId,
+    updated_at: new Date().toISOString(),
+  }).eq('id', jobId);
+}
+
 export async function processJob(params: {
   jobId: string;
   userId: string;
@@ -76,7 +141,7 @@ export async function processJob(params: {
   const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'tempo-'));
 
   try {
-    if (TEXT_PLATFORMS.includes(platform)) {
+    if (isTextPlatform(platform)) {
       await runTextPipeline({ ...params, tmpDir });
     } else {
       await runVideoPipeline({ ...params, tmpDir });
@@ -203,31 +268,7 @@ async function runTextPipeline(params: {
   });
   if (svErr) throw new Error(svErr.message);
 
-  const { error: movErr } = await db.from('movements').insert(movementRows);
-  if (movErr) throw new Error(movErr.message);
-
-  const workoutId = crypto.randomUUID();
-  const { error: wErr } = await db.from('workouts').insert({
-    id: workoutId,
-    user_id: userId,
-    title,
-    source_video_id: sourceVideoId,
-  });
-  if (wErr) throw new Error(wErr.message);
-
-  const workoutMovements = movementRows.map((m, i) => ({
-    id: crypto.randomUUID(),
-    workout_id: workoutId,
-    movement_id: m.id,
-    position: i,
-  }));
-  await db.from('workout_movements').insert(workoutMovements);
-
-  await db.from('processing_jobs').update({
-    status: 'complete',
-    source_video_id: sourceVideoId,
-    updated_at: new Date().toISOString(),
-  }).eq('id', jobId);
+  await finalizeWorkout({ jobId, userId, title, sourceVideoId, movementRows });
 }
 
 // ─── Video pipeline: existing behavior, unchanged ───────────────────────────
@@ -274,22 +315,14 @@ async function runVideoPipeline(params: {
       // Source video exists but workout was deleted — recreate it from existing movements
       if (cachedTyped.movements?.length > 0) {
         log(jobId, `cache hit — recreating workout from ${cachedTyped.movements.length} existing movements`);
-        const workoutId = crypto.randomUUID();
-        await db.from('workouts').insert({
-          id: workoutId,
-          user_id: userId,
+        await createWorkoutFromMovements({
+          userId,
           title: cachedTyped.title,
-          source_video_id: cachedTyped.id,
+          sourceVideoId: cachedTyped.id,
+          movements: cachedTyped.movements
+            .sort((a, b) => a.position - b.position)
+            .map((m) => ({ id: m.id, position: m.position })),
         });
-        const workoutMovements = cachedTyped.movements
-          .sort((a, b) => a.position - b.position)
-          .map((m) => ({
-            id: crypto.randomUUID(),
-            workout_id: workoutId,
-            movement_id: m.id,
-            position: m.position,
-          }));
-        await db.from('workout_movements').insert(workoutMovements);
         await db.from('processing_jobs').update({
           status: 'complete',
           source_video_id: cachedTyped.id,
@@ -402,15 +435,6 @@ async function runVideoPipeline(params: {
 
   const sourceThumbUrl = (url ? getVideoThumbnailUrl(url) : null) ?? firstThumbUrl;
 
-  // A plain upsert with `id` in the payload would try to overwrite the
-  // existing row's primary key on conflict, which fails with a foreign key
-  // violation the moment anything (e.g. an older processing_jobs row) still
-  // references that id. Look up by original_url first and reuse its real id
-  // instead of letting the insert generate — and try to set — a new one.
-  const existing = url
-    ? (await db.from('source_videos').select('id').eq('original_url', url).maybeSingle()).data
-    : null;
-
   const sourceVideoFields = {
     user_id: userId,
     original_url: url ?? null,
@@ -421,41 +445,20 @@ async function runVideoPipeline(params: {
     processed_at: new Date().toISOString(),
   };
 
-  let actualSourceVideoId: string;
-  if (existing) {
-    actualSourceVideoId = existing.id;
-    const { error: svErr } = await db.from('source_videos').update(sourceVideoFields).eq('id', actualSourceVideoId);
-    if (svErr) throw new Error(svErr.message);
-  } else {
-    actualSourceVideoId = sourceVideoId;
-    const { error: svErr } = await db.from('source_videos').insert({ id: sourceVideoId, ...sourceVideoFields });
-    if (svErr) throw new Error(svErr.message);
-  }
+  // Omitting `id` from the payload lets Postgres generate one only on
+  // insert and leave an existing row's id untouched on conflict — one
+  // atomic statement. (A separate lookup-then-branch here previously fixed
+  // an id-overwrite bug but reopened a race: two concurrent submissions of
+  // the same URL could both see "no existing row" and both try to insert,
+  // violating the original_url unique constraint.)
+  const { data: svRow, error: svErr } = await db
+    .from('source_videos')
+    .upsert(sourceVideoFields, { onConflict: 'original_url' })
+    .select('id')
+    .single();
+  if (svErr) throw new Error(svErr.message);
+  const actualSourceVideoId = svRow.id;
   const finalMovementRows = movementRows.map(m => ({ ...m, source_video_id: actualSourceVideoId }));
 
-  const { error: movErr } = await db.from('movements').insert(finalMovementRows);
-  if (movErr) throw new Error(movErr.message);
-
-  const workoutId = crypto.randomUUID();
-  const { error: wErr } = await db.from('workouts').insert({
-    id: workoutId,
-    user_id: userId,
-    title,
-    source_video_id: actualSourceVideoId,
-  });
-  if (wErr) throw new Error(wErr.message);
-
-  const workoutMovements = finalMovementRows.map((m, i) => ({
-    id: crypto.randomUUID(),
-    workout_id: workoutId,
-    movement_id: m.id,
-    position: i,
-  }));
-  await db.from('workout_movements').insert(workoutMovements);
-
-  await db.from('processing_jobs').update({
-    status: 'complete',
-    source_video_id: actualSourceVideoId,
-    updated_at: new Date().toISOString(),
-  }).eq('id', jobId);
+  await finalizeWorkout({ jobId, userId, title, sourceVideoId: actualSourceVideoId, movementRows: finalMovementRows });
 }

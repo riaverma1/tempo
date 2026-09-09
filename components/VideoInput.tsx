@@ -12,7 +12,10 @@ import { Colors } from '@/constants/colors';
 
 interface Props {
   onSubmitUrl: (url: string) => void;
-  onSubmitFile: (uri: string, mimeType: string, filename: string) => void;
+  // webFile is only set on web — expo-document-picker's real browser File
+  // object, needed because a browser's FormData doesn't understand the
+  // {uri, type, name} shape React Native's native fetch polyfill expects.
+  onSubmitFile: (uri: string, mimeType: string, filename: string, webFile?: File) => void;
   onSubmitText: (text: string) => void;
   loading: boolean;
 }
@@ -42,7 +45,7 @@ export function VideoInput({ onSubmitUrl, onSubmitFile, onSubmitText, loading }:
     });
     if (result.canceled || !result.assets[0]) return;
     const asset = result.assets[0];
-    onSubmitFile(asset.uri, asset.mimeType ?? 'application/octet-stream', asset.name);
+    onSubmitFile(asset.uri, asset.mimeType ?? 'application/octet-stream', asset.name, asset.file);
   };
 
   return (
