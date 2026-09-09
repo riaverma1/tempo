@@ -3,8 +3,8 @@ import path from 'path';
 import fs from 'fs/promises';
 import { db } from '../db/client';
 import { downloadVideo } from '../pipeline/download';
-import { getVideoTitle, getVideoThumbnailUrl } from '../pipeline/chapters';
-import { ParsedSegment, analyzeWithTwelveLabs } from '../pipeline/twelvelabs';
+import { getVideoMetadata, getVideoThumbnailUrl } from '../pipeline/chapters';
+import { ParsedSegment, analyzeWithTwelveLabs, enrichSegmentsWithCaption } from '../pipeline/twelvelabs';
 import { cutClips, ClipSpec } from '../pipeline/ffmpeg';
 import { uploadClip } from '../pipeline/upload';
 import { extractPdfText, extractPdfImages, renderPdfPagesToImages } from '../pipeline/textInput';
@@ -269,6 +269,7 @@ async function runVideoPipeline(params: {
   // 2. Download
   let videoPath = filePath;
   let videoTitle: string | null = null;
+  let videoDescription: string | null = null;
 
   if (!videoPath && url) {
     await updateJob(jobId, { status: 'downloading' });
@@ -282,16 +283,30 @@ async function runVideoPipeline(params: {
     }
   }
 
-  // 3. Fetch video title
-  if (!videoTitle && url) {
-    videoTitle = await getVideoTitle(url);
+  // 3. Fetch title + caption
+  if (url) {
+    const metadata = await getVideoMetadata(url);
+    videoTitle = metadata.title;
+    videoDescription = metadata.description;
   }
 
   // 4. Twelve Labs analysis
   await updateJob(jobId, { status: 'analyzing' });
   const detectionMethod = 'twelve_labs';
   if (!videoPath) throw new Error('Video could not be downloaded. Try uploading the file directly.');
-  const segments: ParsedSegment[] = await analyzeWithTwelveLabs({ type: 'file', path: videoPath });
+  let segments: ParsedSegment[] = await analyzeWithTwelveLabs({ type: 'file', path: videoPath });
+
+  // Fill in reps/sets/hold time from the caption where Twelve Labs can only
+  // guess from the video itself — optional enrichment, never fails the job.
+  if (videoDescription) {
+    try {
+      const captionExercises = await interpretExercises({ text: videoDescription });
+      segments = enrichSegmentsWithCaption(segments, captionExercises);
+      log(jobId, `enriched segments from caption (${captionExercises.length} exercises found in caption)`);
+    } catch (err) {
+      log(jobId, `caption enrichment skipped: ${err instanceof Error ? err.message : 'unknown error'}`);
+    }
+  }
 
   log(jobId, `${segments.length} segments via ${detectionMethod}`);
   await updateJob(jobId, { segments_found: segments.length, detection_method_used: detectionMethod });
@@ -351,21 +366,36 @@ async function runVideoPipeline(params: {
   }
 
   const sourceThumbUrl = (url ? getVideoThumbnailUrl(url) : null) ?? firstThumbUrl;
-  const { data: svRow, error: svErr } = await db.from('source_videos').upsert({
-    id: sourceVideoId,
+
+  // A plain upsert with `id` in the payload would try to overwrite the
+  // existing row's primary key on conflict, which fails with a foreign key
+  // violation the moment anything (e.g. an older processing_jobs row) still
+  // references that id. Look up by original_url first and reuse its real id
+  // instead of letting the insert generate — and try to set — a new one.
+  const existing = url
+    ? (await db.from('source_videos').select('id').eq('original_url', url).maybeSingle()).data
+    : null;
+
+  const sourceVideoFields = {
     user_id: userId,
     original_url: url ?? null,
     platform,
     title,
     thumbnail_url: sourceThumbUrl,
-    processing_status: 'complete',
+    processing_status: 'complete' as const,
     processed_at: new Date().toISOString(),
-  }, { onConflict: 'original_url' }).select('id').single();
-  if (svErr) throw new Error(svErr.message);
+  };
 
-  // If a source_video already existed for this URL (e.g. a previous failed run),
-  // the upsert updates it but keeps the original primary key — use that real ID.
-  const actualSourceVideoId = svRow.id;
+  let actualSourceVideoId: string;
+  if (existing) {
+    actualSourceVideoId = existing.id;
+    const { error: svErr } = await db.from('source_videos').update(sourceVideoFields).eq('id', actualSourceVideoId);
+    if (svErr) throw new Error(svErr.message);
+  } else {
+    actualSourceVideoId = sourceVideoId;
+    const { error: svErr } = await db.from('source_videos').insert({ id: sourceVideoId, ...sourceVideoFields });
+    if (svErr) throw new Error(svErr.message);
+  }
   const finalMovementRows = movementRows.map(m => ({ ...m, source_video_id: actualSourceVideoId }));
 
   const { error: movErr } = await db.from('movements').insert(finalMovementRows);

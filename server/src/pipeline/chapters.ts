@@ -41,7 +41,15 @@ function extractVideoId(url: string): string | null {
   return null;
 }
 
-async function getTitleViaYtDlp(url: string): Promise<string | null> {
+export interface VideoMetadata {
+  title: string | null;
+  // The caption/description text — TikTok and Instagram creators often spell
+  // out exact reps/sets/hold times here that aren't reliably readable from
+  // the video itself.
+  description: string | null;
+}
+
+async function getMetadataViaYtDlp(url: string): Promise<VideoMetadata> {
   try {
     const { stdout } = await execFileAsync('yt-dlp', [
       '--dump-json',
@@ -49,17 +57,17 @@ async function getTitleViaYtDlp(url: string): Promise<string | null> {
       '--no-playlist',
       url,
     ]);
-    const info = JSON.parse(stdout) as { title?: string };
-    return info.title ?? null;
+    const info = JSON.parse(stdout) as { title?: string; description?: string };
+    return { title: info.title ?? null, description: info.description ?? null };
   } catch (err) {
     console.error('[chapters] yt-dlp --dump-json failed:', err instanceof Error ? err.message : err);
-    return null;
+    return { title: null, description: null };
   }
 }
 
-export async function getVideoTitle(url: string): Promise<string | null> {
+export async function getVideoMetadata(url: string): Promise<VideoMetadata> {
   if (detectPlatform(url) !== 'youtube') {
-    return getTitleViaYtDlp(url);
+    return getMetadataViaYtDlp(url);
   }
 
   const apiKey = process.env.YOUTUBE_DATA_API_KEY;
@@ -71,9 +79,9 @@ export async function getVideoTitle(url: string): Promise<string | null> {
           `https://www.googleapis.com/youtube/v3/videos?id=${videoId}&part=snippet&key=${apiKey}`
         );
         if (res.ok) {
-          const data = await res.json() as { items?: Array<{ snippet: { title: string } }> };
-          const title = data.items?.[0]?.snippet.title;
-          if (title) return title;
+          const data = await res.json() as { items?: Array<{ snippet: { title: string; description: string } }> };
+          const snippet = data.items?.[0]?.snippet;
+          if (snippet?.title) return { title: snippet.title, description: snippet.description ?? null };
         }
       } catch (err) {
         console.error('[chapters] YouTube Data API failed, falling back to yt-dlp:', err instanceof Error ? err.message : err);
@@ -81,5 +89,5 @@ export async function getVideoTitle(url: string): Promise<string | null> {
     }
   }
 
-  return getTitleViaYtDlp(url);
+  return getMetadataViaYtDlp(url);
 }

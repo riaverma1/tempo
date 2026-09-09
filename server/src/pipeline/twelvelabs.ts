@@ -1,6 +1,8 @@
 import fs from 'fs';
 import FormData from 'form-data';
 import fetch from 'node-fetch';
+import { CompactExercise } from './llmInterpret';
+
 export interface ParsedSegment {
   name: string;
   mode: 'timed' | 'reps';
@@ -12,6 +14,42 @@ export interface ParsedSegment {
 }
 
 const BASE = 'https://api.twelvelabs.io/v1.3';
+
+function normalizeName(name: string): string {
+  return name.toLowerCase().replace(/[^a-z0-9 ]/g, '').trim();
+}
+
+// Twelve Labs is reliable for *where* a movement happens (start/end
+// timestamps, for clip cutting) but has to guess reps/sets/hold time purely
+// from what's visible — unreliable when a caption states the prescription
+// explicitly (e.g. TikTok/Instagram captions often spell out "3x20").
+// Matches by name overlap and fills in numbers only where the caption gives
+// them; a segment with no match is returned unchanged.
+export function enrichSegmentsWithCaption(
+  segments: ParsedSegment[],
+  captionExercises: CompactExercise[]
+): ParsedSegment[] {
+  return segments.map((seg) => {
+    const segName = normalizeName(seg.name);
+    const match = captionExercises.find((ex) => {
+      const exName = normalizeName(ex.name);
+      return exName.length > 2 && (segName.includes(exName) || exName.includes(segName));
+    });
+    if (!match) return seg;
+
+    if (match.hold_sec != null) {
+      // Caption states an exact hold time — more trustworthy than however
+      // long Twelve Labs happened to cut the demonstration clip.
+      return { ...seg, duration_sec: match.hold_sec, reps: match.reps, sets: match.sets };
+    }
+    if (match.reps != null) {
+      // A rep count with no hold time ("3x20") — switch to reps mode, same
+      // as the text-input pipeline's fallback for this shape.
+      return { ...seg, mode: 'reps' as const, reps: match.reps, sets: match.sets };
+    }
+    return seg;
+  });
+}
 
 async function getOrCreateIndex(): Promise<string> {
   const apiKey = process.env.TWELVE_LABS_API_KEY!;
