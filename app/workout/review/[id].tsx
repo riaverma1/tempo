@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  Alert,
   FlatList,
   GestureResponderEvent,
   Image,
@@ -23,6 +22,7 @@ import DraggableFlatList, { RenderItemParams, ScaleDecorator } from 'react-nativ
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Colors } from '@/constants/colors';
 import { supabase } from '@/lib/supabase';
+import { confirm, notify } from '@/lib/confirm';
 import { USE_MOCK } from '@/lib/env';
 import { MOCK_WORKOUT } from '@/mocks/workout';
 import { WorkoutMovement } from '@/types';
@@ -241,14 +241,9 @@ export default function ReviewScreen() {
 
   const deleteMovement = (key: string) => {
     const m = movements.find((m) => m._key === key);
-    Alert.alert('Remove movement?', m?.movement.name ?? '', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Remove',
-        style: 'destructive',
-        onPress: () => setMovements((prev) => prev.filter((m) => m._key !== key)),
-      },
-    ]);
+    confirm('Remove movement?', m?.movement.name ?? '', 'Remove', () =>
+      setMovements((prev) => prev.filter((m) => m._key !== key))
+    );
   };
 
   const deleteWorkoutRow = async () => {
@@ -262,20 +257,14 @@ export default function ReviewScreen() {
 
   const discardAndLeave = () => {
     if (isNew === 'true') {
-      Alert.alert('Discard workout?', 'This workout will not be saved.', [
-        { text: 'Keep editing', style: 'cancel' },
-        { text: 'Discard', style: 'destructive', onPress: deleteWorkoutRow },
-      ]);
+      confirm('Discard workout?', 'This workout will not be saved.', 'Discard', deleteWorkoutRow);
     } else {
       router.back();
     }
   };
 
   const deleteWorkout = () => {
-    Alert.alert('Delete workout?', `"${title}" will be permanently removed.`, [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: deleteWorkoutRow },
-    ]);
+    confirm('Delete workout?', `"${title}" will be permanently removed.`, 'Delete', deleteWorkoutRow);
   };
 
   const saveEdits = async () => {
@@ -340,7 +329,7 @@ export default function ReviewScreen() {
       await saveEdits();
       router.replace(destination);
     } catch {
-      Alert.alert('Save failed', 'Something went wrong. Try again.');
+      notify('Save failed', 'Something went wrong. Try again.');
     } finally {
       setSaving(false);
     }

@@ -1,6 +1,6 @@
 export type Platform =
   | 'youtube' | 'tiktok' | 'instagram' | 'facebook' | 'uploaded'
-  | 'pdf' | 'text';
+  | 'pdf' | 'text' | 'image';
 
 export type ProcessingStatus =
   | 'pending'

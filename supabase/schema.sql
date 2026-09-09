@@ -10,7 +10,7 @@ create table source_videos (
   id uuid primary key default uuid_generate_v4(),
   user_id uuid not null,
   original_url text unique,
-  platform text not null check (platform in ('youtube', 'tiktok', 'uploaded', 'instagram', 'facebook', 'pdf', 'text')),
+  platform text not null check (platform in ('youtube', 'tiktok', 'uploaded', 'instagram', 'facebook', 'pdf', 'text', 'image')),
   title text not null default '',
   duration_sec integer,
   thumbnail_url text,

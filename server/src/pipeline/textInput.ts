@@ -10,9 +10,10 @@ const execFileAsync = promisify(execFile);
 // (image-only) rather than trusting its text layer.
 const MIN_USABLE_TEXT_CHARS = 200;
 
-export function detectFileKind(mimeType: string, filename: string): 'video' | 'pdf' | 'unknown' {
+export function detectFileKind(mimeType: string, filename: string): 'video' | 'pdf' | 'image' | 'unknown' {
   if (mimeType.startsWith('video/') || /\.(mp4|mov|m4v)$/i.test(filename)) return 'video';
   if (mimeType === 'application/pdf' || /\.pdf$/i.test(filename)) return 'pdf';
+  if (mimeType.startsWith('image/') || /\.(jpe?g|png|heic|heif|webp)$/i.test(filename)) return 'image';
   return 'unknown';
 }
 
@@ -61,4 +62,15 @@ export async function renderPdfPagesToImages(filePath: string, outDir: string): 
     .filter((f) => f.startsWith('page') && f.endsWith('.png'))
     .sort();
   return files.map((f) => path.join(outDir, f));
+}
+
+// A photo upload could be a JPEG, HEIC, WebP, or anything a phone produces —
+// interpretExercises always sends images to Claude as image/png, so convert
+// unconditionally rather than tracking media types through the rest of the
+// pipeline. Uses ffmpeg, already a dependency for the video pipeline.
+export async function normalizeImageToPng(filePath: string, outDir: string): Promise<string> {
+  await fs.mkdir(outDir, { recursive: true });
+  const outPath = path.join(outDir, 'photo.png');
+  await execFileAsync('ffmpeg', ['-i', filePath, '-y', outPath]);
+  return outPath;
 }

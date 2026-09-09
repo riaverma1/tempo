@@ -7,18 +7,18 @@ import { getVideoMetadata, getVideoThumbnailUrl } from '../pipeline/chapters';
 import { ParsedSegment, analyzeWithTwelveLabs, enrichSegmentsWithCaption } from '../pipeline/twelvelabs';
 import { cutClips, ClipSpec } from '../pipeline/ffmpeg';
 import { uploadClip } from '../pipeline/upload';
-import { extractPdfText, extractPdfImages, renderPdfPagesToImages } from '../pipeline/textInput';
+import { extractPdfText, extractPdfImages, renderPdfPagesToImages, normalizeImageToPng } from '../pipeline/textInput';
 import { interpretExercises } from '../pipeline/llmInterpret';
 import { expandToMovements, FlatMovement } from '../pipeline/expand';
 
 export type Platform =
   | 'youtube' | 'tiktok' | 'instagram' | 'facebook' | 'uploaded'
-  | 'pdf' | 'text';
+  | 'pdf' | 'text' | 'image';
 
 type JobStatus =
   | 'pending' | 'downloading' | 'analyzing' | 'cutting_clips' | 'uploading' | 'complete' | 'failed';
 
-const TEXT_PLATFORMS: Platform[] = ['pdf', 'text'];
+const TEXT_PLATFORMS: Platform[] = ['pdf', 'text', 'image'];
 
 interface MovementRow {
   id: string;
@@ -50,6 +50,20 @@ async function updateJob(
   await db.from('processing_jobs').update({ ...update, updated_at: new Date().toISOString() }).eq('id', jobId);
 }
 
+// The cancel button just sets error to this sentinel on the job row — there's
+// no way to interrupt a running job directly, so every pipeline has to poll
+// for it between phases and bail out itself. Missing a checkpoint before any
+// slow step (a video download, a Twelve Labs/Claude call) means cancel does
+// nothing until the next one after it, so every phase boundary needs one.
+class CancelledError extends Error {}
+
+async function checkCancelled(jobId: string) {
+  const { data } = await db.from('processing_jobs').select('error').eq('id', jobId).single();
+  if (data?.error === '__cancelled__') {
+    throw new CancelledError('cancelled by user');
+  }
+}
+
 export async function processJob(params: {
   jobId: string;
   userId: string;
@@ -68,6 +82,12 @@ export async function processJob(params: {
       await runVideoPipeline({ ...params, tmpDir });
     }
   } catch (err: unknown) {
+    if (err instanceof CancelledError) {
+      log(jobId, 'cancelled by user — stopped, no workout created');
+      // Leave status/error as the cancel button already set them — just
+      // stop here instead of overwriting with a generic failure message.
+      return;
+    }
     const message = err instanceof Error ? err.message : 'Unknown error';
     log(jobId, `FAILED: ${message}`);
     await updateJob(jobId, { status: 'failed', error: message });
@@ -76,7 +96,7 @@ export async function processJob(params: {
   }
 }
 
-// ─── Text pipeline: PDF / plain text ─────────────────────────────────────────
+// ─── Text pipeline: PDF / plain text / image ─────────────────────────────────
 // Routing (which extraction method to use) and expansion (turning reps/sets
 // into a flat move/rest sequence) are both plain code. The only step that
 // isn't deterministic is interpretExercises — reading natural language and
@@ -111,11 +131,20 @@ async function runTextPipeline(params: {
       text = 'This PDF has no usable text layer — read the exercise instructions from the attached page images.';
     }
     title = 'Workout';
+  } else if (platform === 'image') {
+    // A photo/screenshot has no text layer at all — same vision path as a
+    // scanned PDF page, just no rendering step since it's already an image.
+    if (!filePath) throw new Error('Missing filePath for image input');
+    const pngPath = await normalizeImageToPng(filePath, path.join(tmpDir, 'images'));
+    imagePaths = [pngPath];
+    text = 'Read the exercise instructions from the attached image.';
+    title = 'Workout';
   } else {
     // plain text — already in the right shape, nothing to extract
     title = text.split('\n')[0]?.slice(0, 60) || 'Workout';
   }
 
+  await checkCancelled(jobId);
   const exercises = await interpretExercises({ text, imagePaths });
   const flat: FlatMovement[] = expandToMovements(exercises);
 
@@ -124,6 +153,7 @@ async function runTextPipeline(params: {
 
   const sourceVideoId = crypto.randomUUID();
 
+  await checkCancelled(jobId);
   await updateJob(jobId, { status: 'uploading' });
 
   // Upload each referenced image once (several flattened reps of the same
@@ -155,6 +185,10 @@ async function runTextPipeline(params: {
     is_rest: m.is_rest,
     auto_generated: m.auto_generated,
   }));
+
+  // One more checkpoint before committing DB rows — image uploads above take
+  // real time too.
+  await checkCancelled(jobId);
 
   const sourceThumbUrl = imageUrlByIndex.size > 0 ? [...imageUrlByIndex.values()][0] : null;
   const { error: svErr } = await db.from('source_videos').insert({
@@ -272,6 +306,7 @@ async function runVideoPipeline(params: {
   let videoDescription: string | null = null;
 
   if (!videoPath && url) {
+    await checkCancelled(jobId);
     await updateJob(jobId, { status: 'downloading' });
     const result = await downloadVideo(url, tmpDir);
     if (result) {
@@ -291,6 +326,7 @@ async function runVideoPipeline(params: {
   }
 
   // 4. Twelve Labs analysis
+  await checkCancelled(jobId);
   await updateJob(jobId, { status: 'analyzing' });
   const detectionMethod = 'twelve_labs';
   if (!videoPath) throw new Error('Video could not be downloaded. Try uploading the file directly.');
@@ -312,6 +348,7 @@ async function runVideoPipeline(params: {
   await updateJob(jobId, { segments_found: segments.length, detection_method_used: detectionMethod });
 
   // 5. Cut clips
+  await checkCancelled(jobId);
   await updateJob(jobId, { status: 'cutting_clips' });
   const specs: ClipSpec[] = segments.map((s, i) => ({
     start_sec: s.start_sec,
@@ -322,6 +359,7 @@ async function runVideoPipeline(params: {
   const { clipPaths, thumbPaths } = await cutClips(videoPath, specs, clipsDir);
 
   // 6. Upload + write DB rows
+  await checkCancelled(jobId);
   await updateJob(jobId, { status: 'uploading' });
 
   const title = videoTitle ?? 'Workout';
@@ -358,12 +396,9 @@ async function runVideoPipeline(params: {
     });
   }
 
-  // Check if user cancelled while we were processing
-  const { data: currentJob } = await db.from('processing_jobs').select('error').eq('id', jobId).single();
-  if (currentJob?.error === '__cancelled__') {
-    log(jobId, 'cancelled by user — skipping workout creation');
-    return;
-  }
+  // One more checkpoint before committing DB rows — clip uploads above take
+  // real time too.
+  await checkCancelled(jobId);
 
   const sourceThumbUrl = (url ? getVideoThumbnailUrl(url) : null) ?? firstThumbUrl;
 

@@ -4,6 +4,7 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { Colors } from '@/constants/colors';
 import { WorkoutCard } from '@/components/WorkoutCard';
 import { supabase } from '@/lib/supabase';
+import { confirm } from '@/lib/confirm';
 import { OWNER_USER_ID } from '@/lib/env';
 import { Workout } from '@/types';
 
@@ -50,11 +51,13 @@ export default function Library() {
               workout={item}
               onPress={() => router.push(`/workout/${item.id}`)}
               onEdit={() => router.push(`/workout/review/${item.id}`)}
-              onRemove={async () => {
-                setWorkouts((prev) => prev.filter((w) => w.id !== item.id));
-                await supabase.from('workout_movements').delete().eq('workout_id', item.id);
-                await supabase.from('workouts').delete().eq('id', item.id);
-              }}
+              onRemove={() =>
+                confirm('Delete workout?', `"${item.title}" will be permanently removed.`, 'Delete', async () => {
+                  setWorkouts((prev) => prev.filter((w) => w.id !== item.id));
+                  await supabase.from('workout_movements').delete().eq('workout_id', item.id);
+                  await supabase.from('workouts').delete().eq('id', item.id);
+                })
+              }
             />
           )}
           ItemSeparatorComponent={() => <View style={{ height: 10 }} />}

@@ -29,8 +29,8 @@ export async function processVideoRoute(app: FastifyInstance) {
     const contentType = request.headers['content-type'] ?? '';
 
     if (contentType.includes('multipart/form-data')) {
-      // One picker, two content types — accepts a video file (existing
-      // pipeline) or a PDF (new text pipeline); told apart by mime type.
+      // One picker, three content types — a video (existing pipeline), a PDF,
+      // or a photo/screenshot (both the text pipeline); told apart by mime type.
       const data = await request.file();
       if (!data) return reply.status(400).send({ error: 'No file provided' });
       if (data.file.readableLength > MAX_FILE_SIZE) {
@@ -39,13 +39,16 @@ export async function processVideoRoute(app: FastifyInstance) {
 
       const kind = detectFileKind(data.mimetype, data.filename ?? '');
       if (kind === 'unknown') {
-        return reply.status(400).send({ error: 'Unsupported file type — expected a video or a PDF' });
+        return reply.status(400).send({ error: 'Unsupported file type — expected a video, a PDF, or a photo' });
       }
 
+      const filenameByKind = { video: 'video.mp4', pdf: 'upload.pdf', image: 'upload.img' } as const;
+      const platformByKind = { video: 'uploaded', pdf: 'pdf', image: 'image' } as const;
+
       const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'tempo-upload-'));
-      filePath = path.join(tmpDir, kind === 'pdf' ? 'upload.pdf' : 'video.mp4');
+      filePath = path.join(tmpDir, filenameByKind[kind]);
       await fs.writeFile(filePath, await data.toBuffer());
-      platform = kind === 'pdf' ? 'pdf' : 'uploaded';
+      platform = platformByKind[kind];
     } else {
       const body = request.body as { url?: string; text?: string };
 

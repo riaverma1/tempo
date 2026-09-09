@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { Alert, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Colors } from '@/constants/colors';
 import { VideoInput } from '@/components/VideoInput';
 import { processVideo } from '@/lib/api';
+import { notify } from '@/lib/confirm';
 
 export default function AddWorkout() {
   const [loading, setLoading] = useState(false);
@@ -20,7 +21,7 @@ export default function AddWorkout() {
       await startProcessing(job_id);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Something went wrong';
-      Alert.alert('Error', message);
+      notify('Error', message);
     } finally {
       setLoading(false);
     }
@@ -36,7 +37,7 @@ export default function AddWorkout() {
       await startProcessing(job_id);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Something went wrong';
-      Alert.alert('Error', message);
+      notify('Error', message);
     } finally {
       setLoading(false);
     }
@@ -49,7 +50,7 @@ export default function AddWorkout() {
       await startProcessing(job_id);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Something went wrong';
-      Alert.alert('Error', message);
+      notify('Error', message);
     } finally {
       setLoading(false);
     }
@@ -60,7 +61,7 @@ export default function AddWorkout() {
       <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
         <Text style={styles.title}>Add Workout</Text>
         <Text style={styles.sub}>
-          Paste a video link, type in the instructions, or upload a video or PDF.
+          Paste a video link, type in the instructions, or upload a video, PDF, or photo.
         </Text>
         <VideoInput
           onSubmitUrl={handleUrl}

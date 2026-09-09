@@ -34,10 +34,10 @@ export function VideoInput({ onSubmitUrl, onSubmitFile, onSubmitText, loading }:
   };
 
   const handlePickFile = async () => {
-    // One picker, either a video or a PDF — the server tells them apart by
-    // mime type and routes to the video pipeline or the text pipeline.
+    // One picker, a video, a PDF, or a photo/screenshot — the server tells
+    // them apart by mime type and routes to the video or text pipeline.
     const result = await DocumentPicker.getDocumentAsync({
-      type: ['video/*', 'application/pdf'],
+      type: ['video/*', 'application/pdf', 'image/*'],
       copyToCacheDirectory: true,
     });
     if (result.canceled || !result.assets[0]) return;
@@ -107,7 +107,7 @@ export function VideoInput({ onSubmitUrl, onSubmitFile, onSubmitText, loading }:
       </View>
 
       <TouchableOpacity style={styles.fileBtn} onPress={handlePickFile} disabled={loading}>
-        <Text style={styles.fileBtnText}>Upload a video or PDF</Text>
+        <Text style={styles.fileBtnText}>Upload a video, PDF, or photo</Text>
       </TouchableOpacity>
     </View>
   );
