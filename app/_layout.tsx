@@ -7,9 +7,7 @@ import { useState } from 'react';
 import { Session } from '@supabase/supabase-js';
 import { View } from 'react-native';
 import { Colors } from '@/constants/colors';
-
-const USE_MOCK = process.env.EXPO_PUBLIC_USE_MOCK === 'true';
-const BYPASS_AUTH = USE_MOCK || process.env.EXPO_PUBLIC_BYPASS_AUTH === 'true';
+import { BYPASS_AUTH } from '@/lib/env';
 
 function useProtectedRoute(session: Session | null, loading: boolean) {
   const segments = useSegments();

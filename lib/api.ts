@@ -1,7 +1,7 @@
 import { supabase } from '@/lib/supabase';
+import { BYPASS_AUTH } from '@/lib/env';
 
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
-const BYPASS_AUTH = process.env.EXPO_PUBLIC_USE_MOCK === 'true' || process.env.EXPO_PUBLIC_BYPASS_AUTH === 'true';
 
 async function authHeaders(): Promise<Record<string, string>> {
   if (BYPASS_AUTH) return {};

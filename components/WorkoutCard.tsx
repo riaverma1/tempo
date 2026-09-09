@@ -24,8 +24,7 @@ export function WorkoutCard({ workout, onPress, onEdit, onRemove }: Props) {
     day: 'numeric',
   });
   const totalSec = workout.movements?.reduce((sum, wm) => {
-    const dur = (wm as any).movement?.duration_sec ?? 0;
-    return sum + dur;
+    return sum + (wm.movement?.duration_sec ?? 0);
   }, 0) ?? 0;
   const durationStr = totalSec > 0 ? formatDuration(totalSec) : null;
 

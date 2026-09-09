@@ -13,8 +13,6 @@ export const MOCK_WORKOUT: Workout = {
       workout_id: 'mock-workout-1',
       movement_id: 'mov-1',
       position: 0,
-      override_duration_sec: null,
-      rest_after_sec: 10,
       movement: {
         id: 'mov-1',
         source_video_id: 'mock-video-1',
@@ -38,8 +36,6 @@ export const MOCK_WORKOUT: Workout = {
       workout_id: 'mock-workout-1',
       movement_id: 'mov-2',
       position: 1,
-      override_duration_sec: null,
-      rest_after_sec: 10,
       movement: {
         id: 'mov-2',
         source_video_id: 'mock-video-1',
@@ -63,8 +59,6 @@ export const MOCK_WORKOUT: Workout = {
       workout_id: 'mock-workout-1',
       movement_id: 'mov-3',
       position: 2,
-      override_duration_sec: null,
-      rest_after_sec: 10,
       movement: {
         id: 'mov-3',
         source_video_id: 'mock-video-1',
@@ -88,8 +82,6 @@ export const MOCK_WORKOUT: Workout = {
       workout_id: 'mock-workout-1',
       movement_id: 'mov-4',
       position: 3,
-      override_duration_sec: null,
-      rest_after_sec: null,
       movement: {
         id: 'mov-4',
         source_video_id: 'mock-video-1',
@@ -103,7 +95,7 @@ export const MOCK_WORKOUT: Workout = {
         sets: 3,
         clip_url: '',
         thumbnail_url: null,
-        detection_method: 'chapter_marker',
+        detection_method: 'ocr',
         confidence: 1.0,
         created_at: new Date().toISOString(),
       },

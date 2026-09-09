@@ -2,8 +2,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Workout } from '@/types';
 import { MOCK_WORKOUT } from '@/mocks/workout';
-
-const USE_MOCK = process.env.EXPO_PUBLIC_USE_MOCK === 'true';
+import { USE_MOCK } from '@/lib/env';
 
 export function useWorkout(workoutId: string | null) {
   const [workout, setWorkout] = useState<Workout | null>(null);

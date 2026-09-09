@@ -12,7 +12,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { Href, useLocalSearchParams, useRouter } from 'expo-router';
 import DraggableFlatList, { RenderItemParams, ScaleDecorator } from 'react-native-draggable-flatlist';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Colors } from '@/constants/colors';
@@ -131,20 +131,18 @@ export default function ReviewScreen() {
     ]);
   };
 
+  const deleteWorkoutRow = async () => {
+    if (!id) return;
+    await supabase.from('workout_movements').delete().eq('workout_id', id);
+    await supabase.from('workouts').delete().eq('id', id);
+    router.replace('/(tabs)/library');
+  };
+
   const discardAndLeave = () => {
     if (isNew === 'true') {
       Alert.alert('Discard workout?', 'This workout will not be saved.', [
         { text: 'Keep editing', style: 'cancel' },
-        {
-          text: 'Discard',
-          style: 'destructive',
-          onPress: async () => {
-            if (!id) return;
-            await supabase.from('workout_movements').delete().eq('workout_id', id);
-            await supabase.from('workouts').delete().eq('id', id);
-            router.replace('/(tabs)/library');
-          },
-        },
+        { text: 'Discard', style: 'destructive', onPress: deleteWorkoutRow },
       ]);
     } else {
       router.back();
@@ -154,16 +152,7 @@ export default function ReviewScreen() {
   const deleteWorkout = () => {
     Alert.alert('Delete workout?', `"${title}" will be permanently removed.`, [
       { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: async () => {
-          if (!id) return;
-          await supabase.from('workout_movements').delete().eq('workout_id', id);
-          await supabase.from('workouts').delete().eq('id', id);
-          router.replace('/(tabs)/library');
-        },
-      },
+      { text: 'Delete', style: 'destructive', onPress: deleteWorkoutRow },
     ]);
   };
 
@@ -197,11 +186,11 @@ export default function ReviewScreen() {
     }
   };
 
-  const saveToLibrary = async () => {
+  const saveAndGoTo = async (destination: Href) => {
     setSaving(true);
     try {
       await saveEdits();
-      router.replace('/(tabs)/library');
+      router.replace(destination);
     } catch {
       Alert.alert('Save failed', 'Something went wrong. Try again.');
     } finally {
@@ -209,18 +198,8 @@ export default function ReviewScreen() {
     }
   };
 
-  const save = async () => {
-    if (!id) return;
-    setSaving(true);
-    try {
-      await saveEdits();
-      router.replace(`/workout/${id}`);
-    } catch {
-      Alert.alert('Save failed', 'Something went wrong. Try again.');
-    } finally {
-      setSaving(false);
-    }
-  };
+  const saveToLibrary = () => { saveAndGoTo('/(tabs)/library'); };
+  const save = () => { if (id) saveAndGoTo(`/workout/${id}`); };
 
   const renderItem = ({ item: m, drag, isActive }: RenderItemParams<ReviewMovement>) => (
     <ScaleDecorator>

@@ -4,6 +4,7 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { Colors } from '@/constants/colors';
 import { WorkoutCard } from '@/components/WorkoutCard';
 import { supabase } from '@/lib/supabase';
+import { BYPASS_AUTH } from '@/lib/env';
 import { Workout } from '@/types';
 
 export default function Library() {
@@ -12,7 +13,6 @@ export default function Library() {
   const router = useRouter();
 
   const fetchWorkouts = useCallback(async () => {
-    const BYPASS_AUTH = process.env.EXPO_PUBLIC_USE_MOCK === 'true' || process.env.EXPO_PUBLIC_BYPASS_AUTH === 'true';
     let userId: string | null = null;
     if (BYPASS_AUTH) {
       userId = process.env.EXPO_PUBLIC_DEV_USER_ID ?? null;

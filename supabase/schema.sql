@@ -34,7 +34,7 @@ create table movements (
   sets integer,
   clip_url text not null,
   thumbnail_url text,
-  detection_method text not null check (detection_method in ('chapter_marker', 'ocr', 'twelve_labs')),
+  detection_method text not null check (detection_method in ('ocr', 'twelve_labs')),
   confidence float not null default 0,
   created_at timestamptz not null default now()
 );
@@ -59,8 +59,6 @@ create table workout_movements (
   workout_id uuid not null references workouts(id) on delete cascade,
   movement_id uuid not null references movements(id) on delete cascade,
   position integer not null,
-  override_duration_sec integer,
-  rest_after_sec integer,
   unique (workout_id, position)
 );
 
@@ -75,7 +73,7 @@ create table processing_jobs (
     'pending', 'downloading', 'analyzing', 'cutting_clips', 'uploading', 'complete', 'failed'
   )),
   segments_found integer,
-  detection_method_used text check (detection_method_used in ('chapter_marker', 'ocr', 'twelve_labs')),
+  detection_method_used text check (detection_method_used in ('ocr', 'twelve_labs')),
   error text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
@@ -97,13 +95,13 @@ create policy "users own their source_videos" on source_videos
 create policy "users own their workouts" on workouts
   for all using (auth.uid() = user_id);
 
-create policy "users see movements for their source_videos" on movements
-  for select using (
+create policy "users manage movements for their source_videos" on movements
+  for all using (
     exists (select 1 from source_videos sv where sv.id = source_video_id and sv.user_id = auth.uid())
   );
 
-create policy "users see their workout_movements" on workout_movements
-  for select using (
+create policy "users manage their workout_movements" on workout_movements
+  for all using (
     exists (select 1 from workouts w where w.id = workout_id and w.user_id = auth.uid())
   );
 

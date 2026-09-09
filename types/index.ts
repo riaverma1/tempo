@@ -12,7 +12,7 @@ export type ProcessingStatus =
 
 export type MovementMode = 'timed' | 'reps';
 
-export type DetectionMethod = 'chapter_marker' | 'ocr' | 'twelve_labs';
+export type DetectionMethod = 'ocr' | 'twelve_labs';
 
 export interface Movement {
   id: string;
@@ -48,8 +48,6 @@ export interface WorkoutMovement {
   workout_id: string;
   movement_id: string;
   position: number;
-  override_duration_sec: number | null;
-  rest_after_sec: number | null;
   movement: Movement;
 }
 

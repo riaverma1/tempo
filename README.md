@@ -134,10 +134,9 @@ All four paths converge at the same pipeline on the server:
 URL input
   ├─ detectPlatform(url)         → tags source as youtube / tiktok / instagram
   │
-  ├─ Download (in priority order)
-  │   1. yt-dlp                  → primary; handles YouTube, TikTok, Instagram natively
-  │   2. Cobalt                  → fallback if yt-dlp fails (non-auth errors only)
-  │   ✗ private/login-gated      → surfaces error immediately, skips Cobalt
+  ├─ Download
+  │   yt-dlp                     → handles YouTube, TikTok, Instagram natively
+  │   ✗ private/login-gated      → surfaces error immediately
   │
   └─ Title fetch (in priority order)
       YouTube:           1. YouTube Data API  2. yt-dlp --dump-json
@@ -159,7 +158,7 @@ File upload
 
 **Error handling:**
 - Private or login-gated video → "Download it and upload from your camera roll"
-- Download failure (yt-dlp + Cobalt both fail) → "Try saving it to your camera roll and uploading it directly"
+- Download failure (yt-dlp fails) → "Try saving it to your camera roll and uploading it directly"
 - Twelve Labs or upload failure → error displayed on the processing screen
 
 ### Phase 3 — Present
@@ -200,7 +199,6 @@ Focus Mode (per movement)
 | Twelve Labs | AI video analysis — Marengo 3.0 indexing + Pegasus 1.5 segmentation |
 | Google OAuth | Sign-in (via Supabase Auth provider) |
 | YouTube Data API v3 | Title fetching for YouTube URLs (optional — falls back to yt-dlp) |
-| Cobalt | Fallback video downloader if yt-dlp fails |
 
 ### Tooling
 | Tool | What it does |

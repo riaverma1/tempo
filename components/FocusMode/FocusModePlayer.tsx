@@ -28,8 +28,8 @@ export function FocusModePlayer({ movements, onFinish }: Props) {
       staysActiveInBackground: false,
       allowsRecordingIOS: false,
       interruptionModeIOS: InterruptionModeIOS.MixWithOthers,
-      interruptionModeAndroid: InterruptionModeAndroid.DoNotMix,
-      shouldDuckAndroid: false,
+      interruptionModeAndroid: InterruptionModeAndroid.DuckOthers,
+      shouldDuckAndroid: true,
     });
 
     Audio.Sound.createAsync(require('@/assets/beep.mp3')).then(({ sound }) => {
