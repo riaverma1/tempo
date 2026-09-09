@@ -14,6 +14,7 @@ FROM node:22-slim
 
 RUN apt-get update && apt-get install -y \
     ffmpeg \
+    poppler-utils \
     curl \
     && curl -L https://github.com/yt-dlp/yt-dlp/releases/download/2026.06.09/yt-dlp \
        -o /usr/local/bin/yt-dlp \

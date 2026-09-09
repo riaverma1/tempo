@@ -4,7 +4,7 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { Colors } from '@/constants/colors';
 import { WorkoutCard } from '@/components/WorkoutCard';
 import { supabase } from '@/lib/supabase';
-import { BYPASS_AUTH } from '@/lib/env';
+import { OWNER_USER_ID } from '@/lib/env';
 import { Workout } from '@/types';
 
 export default function Library() {
@@ -13,19 +13,12 @@ export default function Library() {
   const router = useRouter();
 
   const fetchWorkouts = useCallback(async () => {
-    let userId: string | null = null;
-    if (BYPASS_AUTH) {
-      userId = process.env.EXPO_PUBLIC_DEV_USER_ID ?? null;
-    } else {
-      const { data: { user } } = await supabase.auth.getUser();
-      userId = user?.id ?? null;
-    }
-    if (!userId) { setLoading(false); return; }
+    if (!OWNER_USER_ID) { setLoading(false); return; }
 
     const { data, error } = await supabase
       .from('workouts')
       .select('*, source_video:source_videos(*), movements:workout_movements(id, movement:movements(duration_sec))')
-      .eq('user_id', userId)
+      .eq('user_id', OWNER_USER_ID)
       .order('created_at', { ascending: false });
 
     if (error) console.error('[library] fetch error:', error.message);

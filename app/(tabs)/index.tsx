@@ -26,13 +26,26 @@ export default function AddWorkout() {
     }
   };
 
-  const handleFile = async (uri: string, mimeType: string) => {
+  const handleFile = async (uri: string, mimeType: string, filename: string) => {
     try {
       setLoading(true);
       const form = new FormData();
       // @ts-expect-error RN FormData accepts uri objects
-      form.append('file', { uri, type: mimeType, name: 'video.mp4' });
+      form.append('file', { uri, type: mimeType, name: filename });
       const { job_id } = await processVideo(form);
+      await startProcessing(job_id);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Something went wrong';
+      Alert.alert('Error', message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleText = async (text: string) => {
+    try {
+      setLoading(true);
+      const { job_id } = await processVideo({ text });
       await startProcessing(job_id);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Something went wrong';
@@ -46,8 +59,15 @@ export default function AddWorkout() {
     <SafeAreaView style={styles.safe}>
       <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
         <Text style={styles.title}>Add Workout</Text>
-        <Text style={styles.sub}>Paste a YouTube link or import a TikTok from your camera roll.</Text>
-        <VideoInput onSubmitUrl={handleUrl} onSubmitFile={handleFile} loading={loading} />
+        <Text style={styles.sub}>
+          Paste a video link, type in the instructions, or upload a video or PDF.
+        </Text>
+        <VideoInput
+          onSubmitUrl={handleUrl}
+          onSubmitFile={handleFile}
+          onSubmitText={handleText}
+          loading={loading}
+        />
       </ScrollView>
     </SafeAreaView>
   );

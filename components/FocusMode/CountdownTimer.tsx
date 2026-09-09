@@ -7,16 +7,19 @@ interface Props {
   onComplete?: () => void;
   onBeep?: () => void;
   running: boolean;
+  beepCount?: number;
 }
 
-export function CountdownTimer({ durationSec, onComplete, onBeep, running }: Props) {
+export function CountdownTimer({ durationSec, onComplete, onBeep, running, beepCount = 3 }: Props) {
   const [remaining, setRemaining] = useState(durationSec);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const onCompleteRef = useRef(onComplete);
   const onBeepRef = useRef(onBeep);
+  const beepCountRef = useRef(beepCount);
 
   useEffect(() => { onCompleteRef.current = onComplete; }, [onComplete]);
   useEffect(() => { onBeepRef.current = onBeep; }, [onBeep]);
+  useEffect(() => { beepCountRef.current = beepCount; }, [beepCount]);
 
   useEffect(() => {
     setRemaining(durationSec);
@@ -32,7 +35,7 @@ export function CountdownTimer({ durationSec, onComplete, onBeep, running }: Pro
       setRemaining((prev) => {
         const next = prev - 1;
 
-        if (next <= 3 && next > 0) {
+        if (next <= beepCountRef.current && next > 0) {
           setTimeout(() => onBeepRef.current?.(), 0);
         }
 

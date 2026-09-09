@@ -23,7 +23,7 @@ export async function downloadVideo(url: string, outputDir: string): Promise<{ p
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     if (/private video|sign in|login required|not available/i.test(msg)) {
-      throw new Error('This video is private or requires login. Download it and upload from your camera roll.');
+      throw new Error('This video is private or requires login. Save it to your device and upload it directly instead.');
     }
     console.error('[download] yt-dlp failed:', msg);
     return null;

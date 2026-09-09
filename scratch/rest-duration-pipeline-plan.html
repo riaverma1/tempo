@@ -1,0 +1,705 @@
+<title>Rest &amp; Extraction Design</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap">
+<style>
+  :root{
+    --bg:#090D1B;
+    --surface:#111827;
+    --surface-alt:#1A2236;
+    --border:#1F2D45;
+    --move:#C8FF00;
+    --move-dim:#8BAF00;
+    --rest:#FFB454;
+    --rest-dim:#B8823C;
+    --llm:#8C7CFF;
+    --text:#FFFFFF;
+    --text-secondary:#8892A4;
+    --text-muted:#4B5563;
+    --error:#FF4444;
+  }
+
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family:'Sora',system-ui,-apple-system,sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  .doc{
+    max-width:760px;
+    margin:0 auto;
+    padding:64px 24px 96px;
+  }
+
+  .kicker{
+    font-family:'JetBrains Mono',monospace;
+    font-size:12px;
+    letter-spacing:0.12em;
+    text-transform:uppercase;
+    color:var(--text-muted);
+    margin:0 0 10px;
+  }
+  .doc-title{
+    font-size:clamp(28px,4vw,38px);
+    font-weight:800;
+    line-height:1.15;
+    margin:0 0 14px;
+    text-wrap:balance;
+  }
+  .doc-sub{
+    font-size:16px;
+    line-height:1.65;
+    color:var(--text-secondary);
+    max-width:62ch;
+    margin:0;
+  }
+  .doc-sub code, p code, li code{
+    font-family:'JetBrains Mono',monospace;
+    font-size:0.85em;
+    background:var(--surface-alt);
+    border:1px solid var(--border);
+    border-radius:4px;
+    padding:1px 6px;
+    color:var(--move);
+  }
+
+  header.hero{
+    padding-bottom:40px;
+    border-bottom:1px solid var(--border);
+    margin-bottom:56px;
+  }
+
+  section{margin-bottom:72px;}
+  section:last-child{margin-bottom:0;}
+
+  .section-eyebrow{
+    display:flex;
+    align-items:baseline;
+    gap:10px;
+    font-family:'JetBrains Mono',monospace;
+    font-size:12px;
+    letter-spacing:0.1em;
+    text-transform:uppercase;
+    color:var(--text-muted);
+    margin-bottom:10px;
+  }
+  .section-eyebrow .num{color:var(--move);}
+  h2{
+    font-size:24px;
+    font-weight:700;
+    margin:0 0 16px;
+    text-wrap:balance;
+  }
+  p{
+    font-size:15px;
+    line-height:1.7;
+    color:var(--text-secondary);
+    max-width:64ch;
+    margin:0 0 16px;
+  }
+  p:last-child{margin-bottom:0;}
+  strong{color:var(--text);font-weight:600;}
+
+  /* ---- mockup: review card ---- */
+  .mockup-frame{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:18px;
+    padding:20px;
+    margin:28px 0 18px;
+  }
+  .mockup-label{
+    font-family:'JetBrains Mono',monospace;
+    font-size:11px;
+    letter-spacing:0.08em;
+    text-transform:uppercase;
+    color:var(--text-muted);
+    margin:0 0 14px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+  }
+  .mockup-toggle{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    background:var(--surface-alt);
+    border:1px solid var(--border);
+    border-radius:10px;
+    padding:10px 14px;
+    margin-bottom:14px;
+  }
+  .mockup-toggle .tlabel{
+    font-size:13px;
+    color:var(--text);
+    font-weight:600;
+    flex:1;
+  }
+  .mockup-toggle .thint{
+    font-size:11px;
+    color:var(--text-muted);
+  }
+  .switch{
+    width:38px;height:22px;border-radius:11px;
+    background:var(--move-dim);
+    position:relative;
+    flex-shrink:0;
+  }
+  .switch::after{
+    content:'';
+    position:absolute;top:2px;right:2px;
+    width:18px;height:18px;border-radius:50%;
+    background:var(--bg);
+  }
+
+  .bulkrow{
+    display:flex;
+    gap:8px;
+    margin-bottom:14px;
+  }
+  .bulkbtn{
+    flex:1;
+    font-family:'JetBrains Mono',monospace;
+    font-size:11px;
+    text-align:center;
+    padding:9px 6px;
+    border-radius:8px;
+    border:1px solid var(--border);
+    color:var(--text-secondary);
+  }
+  .bulkbtn.move{border-color:var(--move-dim);color:var(--move);}
+  .bulkbtn.rest{border-color:var(--rest-dim);color:var(--rest);}
+
+  .row-list{display:flex;flex-direction:column;gap:8px;}
+  .card{
+    display:flex;
+    align-items:center;
+    background:var(--surface-alt);
+    border:1px solid var(--border);
+    border-radius:12px;
+    overflow:hidden;
+  }
+  .card.is-rest{background:transparent;border-style:dashed;border-color:var(--rest-dim);}
+  .thumb{
+    width:56px;height:56px;flex-shrink:0;
+    background:linear-gradient(145deg,#233152,#182238);
+    display:flex;align-items:center;justify-content:center;
+    font-size:20px;
+  }
+  .card.is-rest .thumb{background:transparent;font-size:16px;color:var(--rest);}
+  .card-body{flex:1;padding:0 12px;min-width:0;}
+  .card-name{
+    font-size:14px;font-weight:600;color:var(--text);
+    display:flex;align-items:center;gap:7px;
+  }
+  .tag{
+    font-family:'JetBrains Mono',monospace;
+    font-size:9px;letter-spacing:0.04em;
+    padding:2px 6px;border-radius:4px;
+    text-transform:uppercase;
+  }
+  .tag.move{background:rgba(200,255,0,0.12);color:var(--move);}
+  .tag.rest{background:rgba(255,180,84,0.12);color:var(--rest);}
+  .card-dur{font-size:12px;color:var(--text-muted);margin-top:2px;}
+  .card.is-rest .card-name{color:var(--rest);}
+  .card.is-rest .card-dur{color:var(--rest-dim);}
+  .card-actions{
+    display:flex;gap:4px;padding-right:10px;flex-shrink:0;
+  }
+  .icon{
+    width:26px;height:26px;border-radius:6px;
+    display:flex;align-items:center;justify-content:center;
+    font-size:12px;color:var(--text-muted);
+    border:1px solid transparent;
+  }
+  .icon.new{color:var(--rest);border-color:var(--rest-dim);}
+
+  .annot-list{
+    list-style:none;margin:20px 0 0;padding:0;
+    display:grid;gap:10px;
+  }
+  .annot-list li{
+    display:flex;gap:10px;
+    font-size:13px;line-height:1.6;color:var(--text-secondary);
+  }
+  .annot-list .dot{
+    flex-shrink:0;width:6px;height:6px;border-radius:50%;
+    background:var(--rest);margin-top:7px;
+  }
+  .annot-list .existing .dot{background:var(--text-muted);}
+  .annot-list b{color:var(--text);font-weight:600;}
+  .pill-new{
+    font-family:'JetBrains Mono',monospace;
+    font-size:10px;color:var(--rest);
+    border:1px solid var(--rest-dim);
+    border-radius:4px;padding:1px 5px;
+    margin-left:6px;
+  }
+  .pill-existing{
+    font-family:'JetBrains Mono',monospace;
+    font-size:10px;color:var(--text-muted);
+    border:1px solid var(--border);
+    border-radius:4px;padding:1px 5px;
+    margin-left:6px;
+  }
+
+  /* ---- toggle mechanism comparison ---- */
+  .compare{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:16px;
+    margin:24px 0;
+  }
+  @media (max-width:600px){.compare{grid-template-columns:1fr;}}
+  .compare-col{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:14px;
+    padding:18px;
+  }
+  .compare-head{
+    display:flex;justify-content:space-between;align-items:center;
+    margin-bottom:14px;
+  }
+  .compare-head .name{font-size:13px;font-weight:700;}
+  .compare-head .state{
+    font-family:'JetBrains Mono',monospace;
+    font-size:10px;letter-spacing:0.06em;
+    padding:2px 7px;border-radius:4px;
+  }
+  .state.on{background:rgba(200,255,0,0.12);color:var(--move);}
+  .state.off{background:rgba(75,85,99,0.25);color:var(--text-muted);}
+  .chipflow{display:flex;flex-wrap:wrap;gap:6px;align-items:center;}
+  .chip{
+    font-family:'JetBrains Mono',monospace;
+    font-size:10px;letter-spacing:0.02em;
+    padding:5px 9px;border-radius:6px;
+  }
+  .chip.move{background:rgba(200,255,0,0.14);color:var(--move);}
+  .chip.rest{background:rgba(255,180,84,0.14);color:var(--rest);}
+  .chip.rest.manual{border:1px dashed var(--rest);}
+  .chipflow .sep{color:var(--text-muted);font-size:11px;}
+  .compare-note{
+    font-size:12px;color:var(--text-muted);
+    margin-top:12px;line-height:1.5;
+  }
+
+  /* ---- options table ---- */
+  .opt-table{
+    width:100%;border-collapse:collapse;
+    margin:24px 0;
+    font-size:13.5px;
+  }
+  .opt-table th{
+    text-align:left;font-family:'JetBrains Mono',monospace;
+    font-size:11px;letter-spacing:0.06em;text-transform:uppercase;
+    color:var(--text-muted);
+    padding:0 12px 10px 0;
+    border-bottom:1px solid var(--border);
+  }
+  .opt-table td{
+    padding:12px 12px 12px 0;
+    border-bottom:1px solid var(--border);
+    color:var(--text-secondary);
+    vertical-align:top;
+    line-height:1.55;
+  }
+  .opt-table tr:last-child td{border-bottom:none;}
+  .opt-table .optname{color:var(--text);font-weight:600;white-space:nowrap;}
+  .opt-table code{
+    font-family:'JetBrains Mono',monospace;font-size:0.9em;
+    background:var(--surface-alt);border:1px solid var(--border);
+    border-radius:4px;padding:1px 5px;color:var(--move);
+  }
+
+  .callout{
+    background:var(--surface);
+    border-left:3px solid var(--move);
+    border-radius:0 10px 10px 0;
+    padding:14px 18px;
+    font-size:13.5px;
+    color:var(--text-secondary);
+    line-height:1.6;
+  }
+  .callout b{color:var(--move);}
+
+  /* ---- pipeline diagram ---- */
+  .diagram-frame{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:18px;
+    padding:24px 20px 16px;
+    margin:28px 0 8px;
+  }
+  figure{margin:0;}
+  figcaption{
+    font-size:12.5px;color:var(--text-muted);
+    margin-top:14px;line-height:1.6;
+    max-width:66ch;
+  }
+  .legend{
+    display:flex;gap:18px;flex-wrap:wrap;
+    font-family:'JetBrains Mono',monospace;
+    font-size:11px;color:var(--text-secondary);
+    margin-top:14px;padding-top:14px;
+    border-top:1px solid var(--border);
+  }
+  .legend span{display:inline-flex;align-items:center;gap:6px;}
+  .legend .sw{width:10px;height:10px;border-radius:2px;display:inline-block;}
+
+  /* ---- input strip ---- */
+  .input-strip{
+    display:grid;
+    grid-template-columns:1fr 1fr 1fr;
+    gap:14px;
+    margin:24px 0 28px;
+  }
+  @media (max-width:640px){.input-strip{grid-template-columns:1fr;}}
+  .input-card{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:14px;
+    padding:18px;
+  }
+  .input-card .ihead{
+    display:flex;align-items:center;gap:8px;
+    margin-bottom:8px;
+  }
+  .input-card .iicon{
+    font-family:'JetBrains Mono',monospace;
+    font-size:11px;color:var(--move);
+    border:1px solid var(--move-dim);
+    border-radius:5px;padding:2px 6px;
+  }
+  .input-card .iname{font-size:14px;font-weight:700;}
+  .input-card .idesc{font-size:12.5px;color:var(--text-secondary);line-height:1.55;}
+  .input-card .idesc b{color:var(--text);font-weight:600;}
+</style>
+
+<div class="doc">
+
+  <header class="hero">
+    <p class="kicker">tempo &mdash; implementation notes</p>
+    <h1 class="doc-title">Rest steps, editable durations, and where the model comes in</h1>
+    <p class="doc-sub">
+      Two decisions from the extraction-pipeline discussion, written up so they're easy to build
+      against: how rest intervals get configured in the review screen, and the shape of the input
+      &amp; extraction pipeline once URL, file upload, and plain text each cover more than one
+      content type &mdash; which parts stay deterministic and which one hop is the LLM.
+    </p>
+  </header>
+
+  <section>
+    <div class="section-eyebrow"><span class="num">01</span> Review screen</div>
+    <h2>Rest &amp; duration controls</h2>
+    <p>
+      <code>app/workout/review/[id].tsx</code> already has per-row duration editing (tap the
+      seconds) and a bulk <code>Set all durations</code> action. The additions below extend that
+      same pattern &mdash; nothing about the editing interaction is new, only that a row can now be
+      a rest interval instead of a move, and rests get their own scoped controls.
+    </p>
+
+    <div class="mockup-frame">
+      <p class="mockup-label">
+        <span>Edit Workout &mdash; preview</span>
+        <span>6 rows</span>
+      </p>
+
+      <div class="mockup-toggle">
+        <span class="tlabel">Rest between moves</span>
+        <span class="thint">fills gaps &middot; only touches auto rests</span>
+        <div class="switch"></div>
+      </div>
+
+      <div class="bulkrow">
+        <div class="bulkbtn move">Set all move durations</div>
+        <div class="bulkbtn rest">Set all rest durations</div>
+      </div>
+
+      <div class="row-list">
+        <div class="card">
+          <div class="thumb">🦵</div>
+          <div class="card-body">
+            <div class="card-name">Bridge <span class="tag move">move</span></div>
+            <div class="card-dur">6s</div>
+          </div>
+          <div class="card-actions">
+            <div class="icon">⧉</div>
+            <div class="icon new">+&#9744;</div>
+            <div class="icon">✕</div>
+          </div>
+        </div>
+        <div class="card is-rest">
+          <div class="thumb">&#9711;</div>
+          <div class="card-body">
+            <div class="card-name">Rest <span class="tag rest">rest</span></div>
+            <div class="card-dur">3s</div>
+          </div>
+          <div class="card-actions">
+            <div class="icon">✕</div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="thumb">🦵</div>
+          <div class="card-body">
+            <div class="card-name">Bridge <span class="tag move">move</span></div>
+            <div class="card-dur">6s</div>
+          </div>
+          <div class="card-actions">
+            <div class="icon">⧉</div>
+            <div class="icon new">+&#9744;</div>
+            <div class="icon">✕</div>
+          </div>
+        </div>
+        <div class="card is-rest">
+          <div class="thumb">&#9711;</div>
+          <div class="card-body">
+            <div class="card-name">Rest <span class="tag rest">rest</span></div>
+            <div class="card-dur">3s</div>
+          </div>
+          <div class="card-actions">
+            <div class="icon">✕</div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="thumb">🦶</div>
+          <div class="card-body">
+            <div class="card-name">Ankle circles <span class="tag move">move</span></div>
+            <div class="card-dur">6s</div>
+          </div>
+          <div class="card-actions">
+            <div class="icon">⧉</div>
+            <div class="icon new">+&#9744;</div>
+            <div class="icon">✕</div>
+          </div>
+        </div>
+      </div>
+
+      <ul class="annot-list">
+        <li class="existing"><span class="dot"></span><span><b>Tap a duration</b> to edit that one row &mdash; unchanged.<span class="pill-existing">existing</span></span></li>
+        <li class="existing"><span class="dot"></span><span><b>⧉ duplicate</b> and drag/reorder &mdash; unchanged.<span class="pill-existing">existing</span></span></li>
+        <li><span class="dot"></span><span><code>Set all durations</code> splits into <b>move</b> and <b>rest</b> scoped versions, so bulk-editing hold time doesn't also overwrite rest length.<span class="pill-new">changed</span></span></li>
+        <li><span class="dot"></span><span><b>+&#9744; insert rest after</b> &mdash; a new per-row action next to duplicate, for adding one rest independently of the global toggle. Rows added this way are <code>is_rest: true, auto_generated: false</code>.<span class="pill-new">new</span></span></li>
+        <li><span class="dot"></span><span><b>Rest between moves</b> switch &mdash; ON inserts <code>auto_generated: true</code> rests into every gap that doesn't already have one; OFF removes only rows where <code>auto_generated</code> is true. It never touches a rest you inserted by hand.<span class="pill-new">new</span></span></li>
+      </ul>
+    </div>
+
+    <div class="compare">
+      <div class="compare-col">
+        <div class="compare-head"><span class="name">Toggle ON</span><span class="state on">alternating</span></div>
+        <div class="chipflow">
+          <span class="chip move">Bridge 6s</span><span class="sep">&rarr;</span>
+          <span class="chip rest">Rest 3s</span><span class="sep">&rarr;</span>
+          <span class="chip move">Bridge 6s</span><span class="sep">&rarr;</span>
+          <span class="chip rest manual">Rest 5s</span><span class="sep">&rarr;</span>
+          <span class="chip move">Ankles 6s</span>
+        </div>
+        <p class="compare-note">Gaps fill with <code>auto_generated: true</code> rests at the default length. The dashed chip was inserted by hand with <code>+&#9744;</code> &mdash; it's already a rest, so the fill pass skips that gap and leaves it exactly as set.</p>
+      </div>
+      <div class="compare-col">
+        <div class="compare-head"><span class="name">Toggle OFF</span><span class="state off">auto rests removed</span></div>
+        <div class="chipflow">
+          <span class="chip move">Bridge 6s</span><span class="sep">&rarr;</span>
+          <span class="chip move">Bridge 6s</span><span class="sep">&rarr;</span>
+          <span class="chip rest manual">Rest 5s</span><span class="sep">&rarr;</span>
+          <span class="chip move">Ankles 6s</span>
+        </div>
+        <p class="compare-note">Only rows where <code>auto_generated</code> is true disappear. The hand-inserted 5s rest stays &mdash; the switch means "stop auto-filling gaps," not "no rests," so nothing you placed on purpose is ever touched by it.</p>
+      </div>
+    </div>
+
+    <p>
+      Settled on adding two booleans to <code>Movement</code> rather than inferring rest from the
+      name: <code>is_rest</code> marks the row as an interval instead of an exercise, and
+      <code>auto_generated</code> is what the toggle checks before deleting anything. A name match
+      (<code>name === 'Rest'</code>) would've avoided the schema change, but it breaks the moment a
+      row gets renamed and can't tell an auto-filled gap from one you placed on purpose &mdash; which
+      is exactly the distinction the toggle needs.
+    </p>
+  </section>
+
+  <section>
+    <div class="section-eyebrow"><span class="num">02</span> Input &amp; extraction pipeline</div>
+    <h2>Three input types, one model call</h2>
+    <p>
+      Down from four separate fields (video link, video upload, webpage link, PDF upload) to
+      three, since URL and file upload can each carry either kind of content &mdash; the app just
+      has to tell them apart. Plain text is new: type "6 reps, 6 seconds each for bridges" straight
+      in, no extraction needed at all.
+    </p>
+
+    <div class="input-strip">
+      <div class="input-card">
+        <div class="ihead"><span class="iicon">1</span><span class="iname">URL</span></div>
+        <div class="idesc">One field. A <b>video link</b> (YouTube/TikTok/Instagram/Facebook domain) goes to the existing video pipeline; anything else is treated as a <b>webpage</b> and scraped.</div>
+      </div>
+      <div class="input-card">
+        <div class="ihead"><span class="iicon">2</span><span class="iname">File upload</span></div>
+        <div class="idesc">One picker. A <b>video file</b> (.mp4/.mov) goes to the existing video pipeline; a <b>PDF</b> is text-extracted, with a scanned-page fallback.</div>
+      </div>
+      <div class="input-card">
+        <div class="ihead"><span class="iicon">3</span><span class="iname">Plain text</span></div>
+        <div class="idesc">A textarea for typed instructions. Already text &mdash; skips routing and extraction, goes straight to the interpretation call.</div>
+      </div>
+    </div>
+
+    <p>
+      The video pipeline (grey, already built) and the text pipeline (lime) still end at the same
+      tables. Detecting which of the three inputs needs which treatment is a cheap deterministic
+      check &mdash; domain regex, file mime type, page text-density &mdash; not a model decision.
+      The only step that isn't plain code is content interpretation: reading "hold 6 seconds,
+      repeat 6 times, 3 sets" and deciding what that means for the move/rest sequence that gets
+      saved.
+    </p>
+
+    <div class="diagram-frame">
+      <figure>
+        <svg viewBox="0 0 1080 440" role="img" aria-label="Diagram: a URL splits into a known video platform, which flows through the existing yt-dlp and Twelve Labs video pipeline, or a generic webpage, which is scraped as text. A file upload splits into a video file, joining the same video pipeline, or a PDF, which is text-extracted or, if scanned, rendered to page images. Plain text skips extraction entirely. Webpage text, PDF text, PDF page images, and plain text all converge into a normalized bundle, pass through one LLM content-interpretation call, then a deterministic expansion step that repeats and interleaves rest. Both the video pipeline and the text pipeline write into the same movements and workout_movements tables.">
+          <defs>
+            <marker id="arrow-grey" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="var(--text-muted)"/>
+            </marker>
+            <marker id="arrow-move" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="var(--move)"/>
+            </marker>
+            <marker id="arrow-llm" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="var(--llm)"/>
+            </marker>
+          </defs>
+
+          <!-- inputs -->
+          <g font-family="Sora, sans-serif" font-size="12" fill="var(--text)">
+            <rect x="20" y="20" width="140" height="52" rx="8" fill="var(--surface-alt)" stroke="var(--move)" stroke-width="1.4"/>
+            <text x="90" y="42" text-anchor="middle" font-weight="600">URL</text>
+            <text x="90" y="58" text-anchor="middle" font-size="10" fill="var(--text-muted)">video or webpage link</text>
+
+            <rect x="20" y="192" width="140" height="52" rx="8" fill="var(--surface-alt)" stroke="var(--move)" stroke-width="1.4"/>
+            <text x="90" y="214" text-anchor="middle" font-weight="600">File upload</text>
+            <text x="90" y="230" text-anchor="middle" font-size="10" fill="var(--text-muted)">video file or PDF</text>
+
+            <rect x="20" y="364" width="140" height="52" rx="8" fill="var(--surface-alt)" stroke="var(--move)" stroke-width="1.4"/>
+            <text x="90" y="386" text-anchor="middle" font-weight="600">Plain text</text>
+            <text x="90" y="402" text-anchor="middle" font-size="10" fill="var(--text-muted)">typed instructions</text>
+          </g>
+
+          <!-- routing diamonds -->
+          <g font-family="Sora, sans-serif" font-size="10.5" fill="var(--text)">
+            <line x1="160" y1="46" x2="196" y2="46" stroke="var(--move)" stroke-width="1.3" marker-end="url(#arrow-move)"/>
+            <polygon points="270,4 342,46 270,88 198,46" fill="var(--surface-alt)" stroke="var(--move)" stroke-width="1.4"/>
+            <text x="270" y="42" text-anchor="middle">Known video</text>
+            <text x="270" y="55" text-anchor="middle">platform?</text>
+
+            <line x1="160" y1="218" x2="196" y2="218" stroke="var(--move)" stroke-width="1.3" marker-end="url(#arrow-move)"/>
+            <polygon points="270,176 342,218 270,260 198,218" fill="var(--surface-alt)" stroke="var(--move)" stroke-width="1.4"/>
+            <text x="270" y="214" text-anchor="middle">Video file</text>
+            <text x="270" y="227" text-anchor="middle">or PDF?</text>
+
+            <line x1="342" y1="218" x2="336" y2="298" stroke="var(--move)" stroke-width="1.2" marker-end="url(#arrow-move)"/>
+            <text x="352" y="262" font-size="10" fill="var(--move-dim)">pdf</text>
+            <polygon points="410,258 482,300 410,342 338,300" fill="var(--surface-alt)" stroke="var(--move)" stroke-width="1.4"/>
+            <text x="410" y="296" text-anchor="middle">Text layer</text>
+            <text x="410" y="309" text-anchor="middle">usable?</text>
+          </g>
+
+          <!-- branch labels + arrows to methods -->
+          <g font-family="JetBrains Mono, monospace" font-size="10" fill="var(--move-dim)">
+            <line x1="270" y1="4" x2="500" y2="42" stroke="var(--text-muted)" stroke-width="1.3" marker-end="url(#arrow-grey)"/>
+            <text x="330" y="18">youtube / tiktok / ig / fb</text>
+
+            <line x1="270" y1="176" x2="500" y2="46" stroke="var(--text-muted)" stroke-width="1.3" marker-end="url(#arrow-grey)"/>
+            <text x="330" y="150">.mp4 / .mov</text>
+
+            <line x1="270" y1="88" x2="500" y2="138" stroke="var(--move)" stroke-width="1.3" marker-end="url(#arrow-move)"/>
+            <text x="330" y="118">other domain (webpage)</text>
+
+            <line x1="410" y1="258" x2="500" y2="268" stroke="var(--move)" stroke-width="1.3" marker-end="url(#arrow-move)"/>
+            <text x="420" y="248">text layer OK</text>
+
+            <line x1="410" y1="342" x2="500" y2="338" stroke="var(--move)" stroke-width="1.3" marker-end="url(#arrow-move)"/>
+            <text x="415" y="362">scanned / sparse text</text>
+          </g>
+
+          <!-- method boxes -->
+          <g font-family="Sora, sans-serif" font-size="11.5" fill="var(--text)">
+            <text x="500" y="10" font-family="JetBrains Mono, monospace" font-size="10" letter-spacing="1" fill="var(--text-muted)">ALREADY BUILT</text>
+            <rect x="500" y="20" width="160" height="48" rx="8" fill="var(--surface-alt)" stroke="var(--text-muted)" stroke-width="1.2"/>
+            <text x="580" y="40" text-anchor="middle">Prepare video file</text>
+            <text x="580" y="54" text-anchor="middle" font-size="10" fill="var(--text-muted)">yt-dlp if URL, else upload</text>
+
+            <text x="500" y="110" font-family="JetBrains Mono, monospace" font-size="10" letter-spacing="1" fill="var(--move)">NEW &mdash; TEXT PATHS</text>
+            <rect x="500" y="118" width="160" height="44" rx="8" fill="var(--surface-alt)" stroke="var(--move-dim)" stroke-width="1.2"/>
+            <text x="580" y="136" text-anchor="middle">Fetch + Readability</text>
+            <text x="580" y="150" text-anchor="middle" font-size="10" fill="var(--text-muted)">HTML &rarr; text + img urls</text>
+
+            <rect x="500" y="248" width="160" height="44" rx="8" fill="var(--surface-alt)" stroke="var(--move-dim)" stroke-width="1.2"/>
+            <text x="580" y="266" text-anchor="middle">PDF text extract</text>
+            <text x="580" y="280" text-anchor="middle" font-size="10" fill="var(--text-muted)">text layer + page images</text>
+
+            <rect x="500" y="318" width="160" height="44" rx="8" fill="var(--surface-alt)" stroke="var(--move-dim)" stroke-width="1.2"/>
+            <text x="580" y="336" text-anchor="middle">Render page &rarr; image</text>
+            <text x="580" y="350" text-anchor="middle" font-size="10" fill="var(--text-muted)">no usable text layer</text>
+          </g>
+
+          <!-- plain text bypass -->
+          <polyline points="160,390 620,390 620,222 700,222" fill="none" stroke="var(--move)" stroke-width="1.3" stroke-dasharray="5 4" marker-end="url(#arrow-move)"/>
+          <text x="330" y="406" font-family="JetBrains Mono, monospace" font-size="10" fill="var(--move-dim)">already text &mdash; skip extraction</text>
+
+          <!-- convergence into bundle / llm / expansion -->
+          <g font-family="Sora, sans-serif" font-size="11.5" fill="var(--text)">
+            <line x1="660" y1="44" x2="700" y2="45" stroke="var(--text-muted)" stroke-width="1.3" marker-end="url(#arrow-grey)"/>
+            <rect x="700" y="20" width="170" height="50" rx="8" fill="var(--surface-alt)" stroke="var(--text-muted)" stroke-width="1.2"/>
+            <text x="785" y="40" text-anchor="middle">Twelve Labs pegasus1.5</text>
+            <text x="785" y="55" text-anchor="middle" font-size="10" fill="var(--text-muted)">&rarr; ParsedSegment[]</text>
+
+            <line x1="660" y1="140" x2="700" y2="200" stroke="var(--move-dim)" stroke-width="1.2" marker-end="url(#arrow-move)"/>
+            <line x1="660" y1="270" x2="700" y2="210" stroke="var(--move-dim)" stroke-width="1.2" marker-end="url(#arrow-move)"/>
+            <line x1="660" y1="340" x2="700" y2="222" stroke="var(--move-dim)" stroke-width="1.2" marker-end="url(#arrow-move)"/>
+
+            <rect x="700" y="185" width="170" height="46" rx="8" fill="var(--surface-alt)" stroke="var(--move)" stroke-width="1.4"/>
+            <text x="785" y="204" text-anchor="middle">Normalized bundle</text>
+            <text x="785" y="219" text-anchor="middle" font-size="10" fill="var(--text-muted)">text + image refs</text>
+
+            <line x1="785" y1="231" x2="785" y2="249" stroke="var(--llm)" stroke-width="1.6" marker-end="url(#arrow-llm)"/>
+
+            <rect x="700" y="250" width="170" height="52" rx="8" fill="#1B1730" stroke="var(--llm)" stroke-width="1.8"/>
+            <text x="785" y="272" text-anchor="middle" fill="var(--llm)" font-weight="600">LLM &mdash; content</text>
+            <text x="785" y="287" text-anchor="middle" fill="var(--llm)" font-weight="600">interpretation</text>
+
+            <line x1="785" y1="302" x2="785" y2="319" stroke="var(--move)" stroke-width="1.4" marker-end="url(#arrow-move)"/>
+
+            <rect x="700" y="320" width="170" height="52" rx="8" fill="var(--surface-alt)" stroke="var(--move)" stroke-width="1.4"/>
+            <text x="785" y="341" text-anchor="middle">Deterministic</text>
+            <text x="785" y="356" text-anchor="middle" font-size="10" fill="var(--text-muted)">repeat + interleave rest</text>
+          </g>
+
+          <!-- final convergence into shared sink -->
+          <line x1="870" y1="45" x2="908" y2="120" stroke="var(--text-muted)" stroke-width="1.4" marker-end="url(#arrow-grey)"/>
+          <line x1="870" y1="346" x2="908" y2="230" stroke="var(--move)" stroke-width="1.4" marker-end="url(#arrow-move)"/>
+
+          <rect x="910" y="90" width="150" height="170" rx="10" fill="var(--surface-alt)" stroke="var(--text)" stroke-width="1.4"/>
+          <text x="985" y="166" text-anchor="middle" font-family="Sora, sans-serif" font-size="12" font-weight="600" fill="var(--text)">movements /</text>
+          <text x="985" y="182" text-anchor="middle" font-family="Sora, sans-serif" font-size="12" font-weight="600" fill="var(--text)">workout_movements</text>
+          <text x="985" y="204" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10" fill="var(--text-muted)">shared sink</text>
+        </svg>
+      </figure>
+
+      <div class="legend">
+        <span><span class="sw" style="background:var(--text-muted)"></span>already built</span>
+        <span><span class="sw" style="background:var(--move)"></span>new, deterministic</span>
+        <span><span class="sw" style="background:var(--llm)"></span>new, model call</span>
+      </div>
+
+      <figcaption>
+        Both diamonds and the text-layer check are cheap, deterministic routing &mdash; a domain
+        regex, a file extension, a character count on the extracted PDF text. None of it needs the
+        model. Plain text skips the whole left half of the diagram, since it's already the format
+        everything else is converging toward. Content interpretation is the one hop that reads
+        natural language and produces structure; expansion right after it is plain code again,
+        because an LLM asked to emit the same object eighteen times in a row is exactly the kind of
+        thing that gets flaky.
+      </figcaption>
+    </div>
+  </section>
+
+</div>

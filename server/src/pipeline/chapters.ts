@@ -3,12 +3,23 @@ import { promisify } from 'util';
 
 const execFileAsync = promisify(execFile);
 
-export function detectPlatform(url: string): 'youtube' | 'tiktok' | 'instagram' | 'facebook' | 'uploaded' {
+type VideoPlatform = 'youtube' | 'tiktok' | 'instagram' | 'facebook';
+
+// Returns the known video platform for a URL, or null if it's not one —
+// callers treat null as "this is a generic webpage" rather than assuming
+// every URL is a video.
+export function detectVideoPlatform(url: string): VideoPlatform | null {
   if (/youtube\.com|youtu\.be/.test(url)) return 'youtube';
   if (/tiktok\.com|vm\.tiktok\.com/.test(url)) return 'tiktok';
   if (/instagram\.com\/reel/.test(url)) return 'instagram';
   if (/facebook\.com|fb\.watch/.test(url)) return 'facebook';
-  return 'uploaded';
+  return null;
+}
+
+// Kept for the video pipeline, which only ever calls this on URLs it has
+// already confirmed (via detectVideoPlatform) are a known video platform.
+export function detectPlatform(url: string): VideoPlatform | 'uploaded' {
+  return detectVideoPlatform(url) ?? 'uploaded';
 }
 
 export function getVideoThumbnailUrl(url: string): string | null {

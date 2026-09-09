@@ -1,4 +1,6 @@
-export type Platform = 'youtube' | 'tiktok' | 'instagram' | 'facebook' | 'uploaded';
+export type Platform =
+  | 'youtube' | 'tiktok' | 'instagram' | 'facebook' | 'uploaded'
+  | 'pdf' | 'text';
 
 export type ProcessingStatus =
   | 'pending'
@@ -12,7 +14,7 @@ export type ProcessingStatus =
 
 export type MovementMode = 'timed' | 'reps';
 
-export type DetectionMethod = 'ocr' | 'twelve_labs';
+export type DetectionMethod = 'ocr' | 'twelve_labs' | 'llm_text' | 'manual';
 
 export interface Movement {
   id: string;
@@ -20,15 +22,22 @@ export interface Movement {
   position: number;
   name: string;
   mode: MovementMode;
-  start_sec: number;
-  end_sec: number;
+  // null for text-derived movements, which have no video timestamp range
+  start_sec: number | null;
+  end_sec: number | null;
   duration_sec: number | null;
   reps: number | null;
   sets: number | null;
-  clip_url: string;
+  // null for text-derived movements, which have no video clip
+  clip_url: string | null;
   thumbnail_url: string | null;
   detection_method: DetectionMethod;
   confidence: number;
+  // a rest interval row rather than an exercise
+  is_rest: boolean;
+  // inserted by the "rest between moves" toggle rather than by hand — the
+  // toggle only ever removes rows marked true here
+  auto_generated: boolean;
   created_at: string;
 }
 

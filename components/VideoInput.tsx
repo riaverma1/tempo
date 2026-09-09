@@ -7,17 +7,19 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import * as ImagePicker from 'expo-image-picker';
+import * as DocumentPicker from 'expo-document-picker';
 import { Colors } from '@/constants/colors';
 
 interface Props {
   onSubmitUrl: (url: string) => void;
-  onSubmitFile: (uri: string, mimeType: string) => void;
+  onSubmitFile: (uri: string, mimeType: string, filename: string) => void;
+  onSubmitText: (text: string) => void;
   loading: boolean;
 }
 
-export function VideoInput({ onSubmitUrl, onSubmitFile, loading }: Props) {
+export function VideoInput({ onSubmitUrl, onSubmitFile, onSubmitText, loading }: Props) {
   const [url, setUrl] = useState('');
+  const [text, setText] = useState('');
 
   const handleSubmitUrl = () => {
     const trimmed = url.trim();
@@ -25,25 +27,33 @@ export function VideoInput({ onSubmitUrl, onSubmitFile, loading }: Props) {
     onSubmitUrl(trimmed);
   };
 
+  const handleSubmitText = () => {
+    const trimmed = text.trim();
+    if (!trimmed) return;
+    onSubmitText(trimmed);
+  };
+
   const handlePickFile = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['videos'],
-      allowsEditing: false,
-      quality: 1,
+    // One picker, either a video or a PDF — the server tells them apart by
+    // mime type and routes to the video pipeline or the text pipeline.
+    const result = await DocumentPicker.getDocumentAsync({
+      type: ['video/*', 'application/pdf'],
+      copyToCacheDirectory: true,
     });
     if (result.canceled || !result.assets[0]) return;
     const asset = result.assets[0];
-    onSubmitFile(asset.uri, asset.mimeType ?? 'video/mp4');
+    onSubmitFile(asset.uri, asset.mimeType ?? 'application/octet-stream', asset.name);
   };
 
   return (
     <View style={styles.container}>
+      <Text style={styles.label}>Link</Text>
       <View style={styles.urlRow}>
         <TextInput
           style={styles.input}
           value={url}
           onChangeText={setUrl}
-          placeholder="Paste YouTube, TikTok, or Instagram URL"
+          placeholder="YouTube, TikTok, Instagram, or Facebook link"
           placeholderTextColor={Colors.textMuted}
           autoCapitalize="none"
           autoCorrect={false}
@@ -71,8 +81,33 @@ export function VideoInput({ onSubmitUrl, onSubmitFile, loading }: Props) {
         <View style={styles.line} />
       </View>
 
+      <Text style={styles.label}>Type it in</Text>
+      <TextInput
+        style={styles.textarea}
+        value={text}
+        onChangeText={setText}
+        placeholder={'e.g. "Bridges — hold 6 seconds, repeat 6 times, 3 sets"'}
+        placeholderTextColor={Colors.textMuted}
+        multiline
+        numberOfLines={4}
+        editable={!loading}
+      />
+      <TouchableOpacity
+        style={[styles.textSubmitBtn, (!text.trim() || loading) && styles.goBtnDisabled]}
+        onPress={handleSubmitText}
+        disabled={!text.trim() || loading}
+      >
+        <Text style={styles.textSubmitBtnText}>{loading ? 'Working…' : 'Build workout from text'}</Text>
+      </TouchableOpacity>
+
+      <View style={styles.divider}>
+        <View style={styles.line} />
+        <Text style={styles.or}>or</Text>
+        <View style={styles.line} />
+      </View>
+
       <TouchableOpacity style={styles.fileBtn} onPress={handlePickFile} disabled={loading}>
-        <Text style={styles.fileBtnText}>Import video from Camera Roll</Text>
+        <Text style={styles.fileBtnText}>Upload a video or PDF</Text>
       </TouchableOpacity>
     </View>
   );
@@ -81,6 +116,12 @@ export function VideoInput({ onSubmitUrl, onSubmitFile, loading }: Props) {
 const styles = StyleSheet.create({
   container: {
     gap: 16,
+  },
+  label: {
+    color: Colors.textSecondary,
+    fontSize: 13,
+    fontWeight: '600',
+    marginBottom: -4,
   },
   urlRow: {
     position: 'relative',
@@ -128,6 +169,30 @@ const styles = StyleSheet.create({
   or: {
     color: Colors.textMuted,
     fontSize: 13,
+  },
+  textarea: {
+    minHeight: 96,
+    backgroundColor: Colors.surface,
+    borderWidth: 1.5,
+    borderColor: Colors.border,
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    color: Colors.text,
+    fontSize: 15,
+    textAlignVertical: 'top',
+  },
+  textSubmitBtn: {
+    height: 52,
+    borderRadius: 14,
+    backgroundColor: Colors.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  textSubmitBtnText: {
+    color: Colors.background,
+    fontSize: 15,
+    fontWeight: '700',
   },
   fileBtn: {
     height: 52,

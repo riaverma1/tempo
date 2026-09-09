@@ -3,11 +3,14 @@
 create extension if not exists "uuid-ossp";
 
 -- source_videos: one row per unique video URL (cache key)
+-- user_id is an app-level owner tag, not a Supabase Auth foreign key — Tempo
+-- has no sign-in flow, so it's just the fixed UUID from EXPO_PUBLIC_USER_ID /
+-- OWNER_USER_ID, kept for schema shape only (multi-user is not supported).
 create table source_videos (
   id uuid primary key default uuid_generate_v4(),
-  user_id uuid not null references auth.users(id) on delete cascade,
+  user_id uuid not null,
   original_url text unique,
-  platform text not null check (platform in ('youtube', 'tiktok', 'uploaded', 'instagram', 'facebook')),
+  platform text not null check (platform in ('youtube', 'tiktok', 'uploaded', 'instagram', 'facebook', 'pdf', 'text')),
   title text not null default '',
   duration_sec integer,
   thumbnail_url text,
@@ -27,15 +30,24 @@ create table movements (
   position integer not null,
   name text not null,
   mode text not null check (mode in ('timed', 'reps')),
-  start_sec integer not null,
-  end_sec integer not null,
+  -- null for text-derived movements, which have no video timestamp range
+  start_sec integer,
+  end_sec integer,
   duration_sec integer,
   reps integer,
   sets integer,
-  clip_url text not null,
+  -- null for text-derived movements, which have no video clip
+  clip_url text,
   thumbnail_url text,
-  detection_method text not null check (detection_method in ('ocr', 'twelve_labs')),
+  -- 'manual' is a row created directly in the review screen (e.g. a rest
+  -- inserted by hand), not detected from any source
+  detection_method text not null check (detection_method in ('ocr', 'twelve_labs', 'llm_text', 'manual')),
   confidence float not null default 0,
+  -- true for a rest interval row rather than an exercise
+  is_rest boolean not null default false,
+  -- true if this rest was inserted by the "rest between moves" toggle rather
+  -- than by hand — the toggle only ever removes rows marked true here
+  auto_generated boolean not null default false,
   created_at timestamptz not null default now()
 );
 
@@ -44,7 +56,7 @@ create index on movements (source_video_id, position);
 -- workouts: user-owned collection of movements
 create table workouts (
   id uuid primary key default uuid_generate_v4(),
-  user_id uuid not null references auth.users(id) on delete cascade,
+  user_id uuid not null,
   title text not null,
   source_video_id uuid not null references source_videos(id),
   total_duration_sec integer,
@@ -67,13 +79,13 @@ create index on workout_movements (workout_id, position);
 -- processing_jobs: drives the realtime status screen
 create table processing_jobs (
   id uuid primary key default uuid_generate_v4(),
-  user_id uuid not null references auth.users(id) on delete cascade,
+  user_id uuid not null,
   source_video_id uuid references source_videos(id),
   status text not null default 'pending' check (status in (
     'pending', 'downloading', 'analyzing', 'cutting_clips', 'uploading', 'complete', 'failed'
   )),
   segments_found integer,
-  detection_method_used text check (detection_method_used in ('ocr', 'twelve_labs')),
+  detection_method_used text check (detection_method_used in ('ocr', 'twelve_labs', 'llm_text')),
   error text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
@@ -81,39 +93,38 @@ create table processing_jobs (
 
 create index on processing_jobs (user_id, created_at desc);
 
--- Enable Row Level Security
-alter table source_videos enable row level security;
-alter table movements enable row level security;
-alter table workouts enable row level security;
-alter table workout_movements enable row level security;
-alter table processing_jobs enable row level security;
+-- Drop the auth.users foreign keys if this is running against an existing
+-- database created before Google sign-in was removed (default Postgres FK
+-- constraint names — harmless no-ops on a fresh install).
+alter table source_videos drop constraint if exists source_videos_user_id_fkey;
+alter table workouts drop constraint if exists workouts_user_id_fkey;
+alter table processing_jobs drop constraint if exists processing_jobs_user_id_fkey;
 
--- RLS policies: users see only their own data
-create policy "users own their source_videos" on source_videos
-  for all using (auth.uid() = user_id);
+-- Tempo has no sign-in flow, so there is never a Supabase Auth session and
+-- auth.uid() is always null — a user_id-scoped RLS policy would deny every
+-- request from the app (iOS and web alike). With exactly one user and no
+-- login, that per-row auth boundary is meaningless, so RLS stays off: the
+-- anon key can read/write these tables directly, same as the app does.
+drop policy if exists "users own their source_videos" on source_videos;
+drop policy if exists "users own their workouts" on workouts;
+drop policy if exists "users see movements for their source_videos" on movements;
+drop policy if exists "users manage movements for their source_videos" on movements;
+drop policy if exists "users see their workout_movements" on workout_movements;
+drop policy if exists "users manage their workout_movements" on workout_movements;
+drop policy if exists "users own their processing_jobs" on processing_jobs;
+drop policy if exists "authenticated users can upload clips" on storage.objects;
 
-create policy "users own their workouts" on workouts
-  for all using (auth.uid() = user_id);
+alter table source_videos disable row level security;
+alter table movements disable row level security;
+alter table workouts disable row level security;
+alter table workout_movements disable row level security;
+alter table processing_jobs disable row level security;
 
-create policy "users manage movements for their source_videos" on movements
-  for all using (
-    exists (select 1 from source_videos sv where sv.id = source_video_id and sv.user_id = auth.uid())
-  );
-
-create policy "users manage their workout_movements" on workout_movements
-  for all using (
-    exists (select 1 from workouts w where w.id = workout_id and w.user_id = auth.uid())
-  );
-
-create policy "users own their processing_jobs" on processing_jobs
-  for all using (auth.uid() = user_id);
-
--- Storage bucket for clips
+-- Storage bucket for clips. Uploads go through the server's service-role
+-- key (see server/src/pipeline/upload.ts), which bypasses RLS regardless —
+-- only the public read policy matters for the app.
 insert into storage.buckets (id, name, public) values ('clips', 'clips', true)
   on conflict do nothing;
 
 create policy "anyone can read clips" on storage.objects
   for select using (bucket_id = 'clips');
-
-create policy "authenticated users can upload clips" on storage.objects
-  for insert with check (bucket_id = 'clips' and auth.role() = 'authenticated');

@@ -27,12 +27,6 @@
     "plugins": [
       "expo-router",
       "expo-video",
-      [
-        "expo-image-picker",
-        {
-          "photosPermission": "Allow Tempo to access your photos to import workout videos."
-        }
-      ],
       "expo-asset"
     ],
     "experiments": {

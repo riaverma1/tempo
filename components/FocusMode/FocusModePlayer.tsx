@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View, useWindowDimensions } from 'react-native';
+import { Image, LayoutChangeEvent, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { VideoView, useVideoPlayer } from 'expo-video';
 import { Audio, InterruptionModeIOS, InterruptionModeAndroid } from 'expo-av';
 import { Colors } from '@/constants/colors';
@@ -8,6 +8,7 @@ import { CountdownTimer } from './CountdownTimer';
 import { RepsDisplay } from './RepsDisplay';
 import { MovementControls } from './MovementControls';
 import { UpNextStrip } from './UpNextStrip';
+import { useBeepCount } from '@/hooks/useBeepCount';
 
 interface Props {
   movements: WorkoutMovement[];
@@ -18,8 +19,13 @@ export function FocusModePlayer({ movements, onFinish }: Props) {
   const [index, setIndex] = useState(0);
   const [muted, setMuted] = useState(true);
   const [paused, setPaused] = useState(false);
-  const { width } = useWindowDimensions();
+  const [containerWidth, setContainerWidth] = useState(0);
   const beepRef = useRef<Audio.Sound | null>(null);
+  const { beepCount, cycleBeepCount } = useBeepCount();
+
+  const handleContainerLayout = (e: LayoutChangeEvent) => {
+    setContainerWidth(e.nativeEvent.layout.width);
+  };
 
   // Configure audio session to mix with background music
   useEffect(() => {
@@ -98,7 +104,7 @@ export function FocusModePlayer({ movements, onFinish }: Props) {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={styles.container} onLayout={handleContainerLayout}>
       {/* Exercise name + mute toggle */}
       <View style={styles.nameContainer}>
         <View style={styles.nameRow}>
@@ -112,6 +118,10 @@ export function FocusModePlayer({ movements, onFinish }: Props) {
           <TouchableOpacity onPress={() => setMuted((v) => !v)} style={styles.muteBtn}>
             <Text style={styles.muteIcon}>{muted ? '🔇' : '🔊'}</Text>
           </TouchableOpacity>
+          <TouchableOpacity onPress={cycleBeepCount} style={styles.beepBtn}>
+            <Text style={styles.muteIcon}>🔔</Text>
+            <Text style={styles.beepCountText}>{beepCount}</Text>
+          </TouchableOpacity>
         </View>
       </View>
 
@@ -119,7 +129,7 @@ export function FocusModePlayer({ movements, onFinish }: Props) {
       <TouchableOpacity
         activeOpacity={1}
         onPress={() => setPaused((v) => !v)}
-        style={[styles.videoContainer, { width, height: width * 0.75 }]}
+        style={[styles.videoContainer, { width: containerWidth, height: containerWidth * 0.75 }]}
       >
         {m.clip_url ? (
           <VideoView
@@ -128,6 +138,8 @@ export function FocusModePlayer({ movements, onFinish }: Props) {
             contentFit="cover"
             nativeControls={false}
           />
+        ) : m.thumbnail_url ? (
+          <Image source={{ uri: m.thumbnail_url }} style={StyleSheet.absoluteFill} resizeMode="cover" />
         ) : (
           <View style={styles.videoPlaceholder}>
             <Text style={styles.placeholderText}>No clip</Text>
@@ -149,6 +161,7 @@ export function FocusModePlayer({ movements, onFinish }: Props) {
             running={!paused}
             onComplete={handleNext}
             onBeep={playBeep}
+            beepCount={beepCount}
           />
         ) : (
           <RepsDisplay sets={m.sets ?? 0} reps={m.reps ?? 0} />
@@ -206,6 +219,18 @@ const styles = StyleSheet.create({
   },
   muteIcon: {
     fontSize: 22,
+  },
+  beepBtn: {
+    padding: 8,
+    marginTop: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+  },
+  beepCountText: {
+    color: Colors.textSecondary,
+    fontSize: 13,
+    fontWeight: '700',
   },
   videoContainer: {
     backgroundColor: Colors.surface,
